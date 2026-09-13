@@ -4,7 +4,7 @@ import { Linha, Coluna } from "./Tabuleiro";
 
 // Constantes para acabar com redundancias:
 const ORDEM_DAS_LINHAS: Linha[] = ["frente", "fundo"];
-const ORDEM_DAS_COLUNAS: Coluna[] = [0, 1, 2];
+const ORDEM_DAS_COLUNAS: Coluna[] = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita];
 
 export class Partida {
     public readonly jogador1: Jogador;

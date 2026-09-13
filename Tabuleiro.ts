@@ -1,7 +1,11 @@
 import { Criatura } from "./Criatura";
 
 export type Linha = "frente" | "fundo";
-export type Coluna = 0 | 1 | 2;
+export enum Coluna {
+    Esquerda = 0,
+    Meio = 1,
+    Direita = 2
+}
 
 export class Tabuleiro {
     public frente: [Criatura | null, Criatura | null, Criatura | null];
