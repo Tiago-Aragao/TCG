@@ -31,4 +31,12 @@ export class Tabuleiro {
             this.fundo[posicao] = null;
         }
     }
+
+    public obterCriatura(linha: Linha, coluna: Coluna): Criatura | null {
+        if (linha === "frente") {
+            return this.frente[coluna]; // retorna o que está na posição e nao a posição em si.
+        } else {
+            return this.fundo[coluna]; // O mesmo vale para aka.
+        }
+    }
 }
