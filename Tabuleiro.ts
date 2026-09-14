@@ -7,10 +7,9 @@ export enum Coluna {
     Meio = 1,
     Direita = 2
 }
-export t
-ype Posicao = {
-    linha: Linha,
-    coluna: Coluna
+export type Posicao = {
+    readonly linha: Linha,
+    readonly coluna: Coluna
 }
 
 export class Tabuleiro {
@@ -48,5 +47,10 @@ export class Tabuleiro {
         } else {
             return this.fundo[coluna]; // O mesmo vale para aka.
         }
+    }
+
+    public possuiCriaturasNoTabuleiro(): boolean {
+        // .some() para imediatamente no primeiro 'true' que encontrar:
+        return this.frente.some(criatura => criatura !== null) || this.fundo.some(criatura => criatura !== null);
     }
 }

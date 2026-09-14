@@ -1,10 +1,16 @@
 import { Jogador } from "./Jogador";
 import { Criatura } from "./Criatura";
-import { Linha, Coluna } from "./Tabuleiro";
+import { Linha, Coluna, Posicao } from "./Tabuleiro";
 
 // Constantes para acabar com redundancias:
-const ORDEM_DAS_LINHAS: Linha[] = ["frente", "fundo"];
-const ORDEM_DAS_COLUNAS: Coluna[] = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita];
+const ORDEM_DAS_LINHAS: Linha[] = ["frente", "fundo"] as const;
+const ORDEM_DAS_COLUNAS: Coluna[] = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita] as const;
+
+// Melhorar a legibilidade criando um alvo:
+export type Alvo = {
+    criatura: Criatura,
+    posicao: Posicao
+}
 
 export class Partida {
     public readonly jogador1: Jogador;
@@ -33,21 +39,38 @@ export class Partida {
 
     private executarTurno(): void {
         console.log(`Turno: ${this.turnoAtual}`);
-        
+
+        // Declaração das criaturas atacantes e defensoras:
         const atacante = (this.turnoAtual % 2 !== 0) ? this.jogador1 : this.jogador2;
         const defensor = (this.turnoAtual % 2 !== 0) ? this.jogador2 : this.jogador1;
 
+        // Inicio do loop para procurar as criaturas atacantes:
         for (const linha of ORDEM_DAS_LINHAS) {
             for (const coluna of ORDEM_DAS_COLUNAS) {
+                // Ao encontrar uma criatura atacante guardo ela:
                 const criaturaAtacante = atacante.tabuleiro.obterCriatura(linha, coluna);
-                
+                // Checagem de segurança:
                 if (criaturaAtacante != null && criaturaAtacante.estaVivo()) {
+                    // Verifico se ela pode atacar da posição que esta alocada:
                     if (this.podeAtacar(criaturaAtacante, linha)) {
-                        // Passamos a 'coluna' do atacante como referência de origem
-                        this.resolverCombate(criaturaAtacante, coluna, defensor);
-                    }
-                    else {
-                        console.log(`${criaturaAtacante.nome} não pode atacar da posição: ${linha}`);
+                        // Agora eu pego o alvo que ela irá atacar:
+                        const alvoEncontrado = this.encontrarAlvo(coluna, defensor);
+                        // Verificação de segurança:
+                        if (alvoEncontrado != null) {
+                            this.resolverCombate(
+                                criaturaAtacante,
+                                alvoEncontrado.criatura,
+                                alvoEncontrado.posicao,
+                                defensor
+                            );
+                        } else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
+                            console.log(`${criaturaAtacante.nome} atacou o ${defensor.nome} com ${criaturaAtacante.ataque} de ataque!`);
+                            defensor.receberDano(criaturaAtacante.ataque);
+                            console.log(`${defensor.nome} | ${defensor.vidaAtual}/${defensor.vidaMaxima}`);
+                        }
+                    // Caso ela esteja na posição incorreta:
+                    } else {
+                        console.log(`${criaturaAtacante.nome} não pode atacar na linha: ${linha}`);
                     }
                 }
             }
@@ -55,23 +78,31 @@ export class Partida {
         this.avancarTurno();
     }
 
-    private resolverCombate(criaturaAtacante: Criatura, colunaOrigem: Coluna, defensor: Jogador): void {
+    private resolverCombate(atacante: Criatura, alvo: Criatura, posicaoAlvo: Posicao, defensor: Jogador): void {
+        console.log(`${atacante.nome} ataca ${alvo.nome} com ${atacante.ataque} de ataque!`);
+        alvo.receberDano(atacante.ataque);
+        console.log(`${alvo.nome} está com ${alvo.vida} de vida!`);
+        
+        if (!alvo.estaVivo()) {
+            console.log(`${alvo.nome} foi destruída!`);
+            defensor.tabuleiro.removerCriatura(posicaoAlvo.linha, posicaoAlvo.coluna);
+        }
+    }
+
+    private encontrarAlvo(colunaOrigem: Coluna, defensor: Jogador): Alvo | null {
+        
         for (const linha of ORDEM_DAS_LINHAS) {
-            
-            // Variáveis para guardar o "vencedor" da varredura atual
             let alvoMaisProximo: Criatura | null = null;
             let colunaDoAlvo: Coluna | null = null;
-            let menorDistancia: number = Infinity;
+            let menorDistancia = Infinity; // Só para primeira comparação ser sempre verdadeira.
 
             for (const coluna of ORDEM_DAS_COLUNAS) {
                 const criaturaDefensora = defensor.tabuleiro.obterCriatura(linha, coluna);
                 
                 if (criaturaDefensora != null && criaturaDefensora.estaVivo()) {
-                    
-                    // A matemática pura de proximidade em 1D
+                    // Verifico a distancia:
                     const distancia = Math.abs(colunaOrigem - coluna);
-
-                    // Se a distância for ESTRITAMENTE menor, atualiza. 
+                    // Atualizo os dados:
                     if (distancia < menorDistancia) {
                         alvoMaisProximo = criaturaDefensora;
                         colunaDoAlvo = coluna;
@@ -80,20 +111,16 @@ export class Partida {
                 }
             }
 
+            // Se achou alguém nesta linha, retorna imediatamente:
             if (alvoMaisProximo != null && colunaDoAlvo != null) {
-                console.log(`${criaturaAtacante.nome} (Col ${colunaOrigem}) ataca ${alvoMaisProximo.nome} (Col ${colunaDoAlvo}) com ${criaturaAtacante.ataque} de ataque!`);
-                alvoMaisProximo.receberDano(criaturaAtacante.ataque);
-                console.log(`${alvoMaisProximo.nome} está com ${alvoMaisProximo.vida} de vida!`);
-                
-                if (!alvoMaisProximo.estaVivo()) {
-                    console.log(`${alvoMaisProximo.nome} foi destruída!`);
-                    defensor.tabuleiro.removerCriatura(linha, colunaDoAlvo);
-                }
-                
-                // Combate resolvido, saímos da função para não varrer a linha de trás.
-                return;
+                return {
+                    criatura: alvoMaisProximo,
+                    posicao: { linha, coluna: colunaDoAlvo }
+                };
             }
         }
+        // Campo vazio:
+        return null;
     }
 
     private podeAtacar(possivelAtacante: Criatura, linha: Linha): boolean {
