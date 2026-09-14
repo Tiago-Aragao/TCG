@@ -39,17 +39,15 @@ export class Partida {
 
         for (const linha of ORDEM_DAS_LINHAS) {
             for (const coluna of ORDEM_DAS_COLUNAS) {
-                // Peço ao Tabuleiro o que tem nessa coordenada exata:
                 const criaturaAtacante = atacante.tabuleiro.obterCriatura(linha, coluna);
-                // Checagem de segurança: Criatura morta ou inxistente nao ataca:
+                
                 if (criaturaAtacante != null && criaturaAtacante.estaVivo()) {
-                    // Verifico se a criatura pode ou nao atacar a depender do alcance e posição:
                     if (this.podeAtacar(criaturaAtacante, linha)) {
-                        // Poharadaria comendo solta:
-                        this.resolverCombate(criaturaAtacante, defensor);
+                        // Passamos a 'coluna' do atacante como referência de origem
+                        this.resolverCombate(criaturaAtacante, coluna, defensor);
                     }
                     else {
-                        console.log(`${criaturaAtacante.nome} não pode atacar na linha: ${linha}`);
+                        console.log(`${criaturaAtacante.nome} não pode atacar da posição: ${linha}`);
                     }
                 }
             }
@@ -57,30 +55,46 @@ export class Partida {
         this.avancarTurno();
     }
 
-    private resolverCombate(criaturaAtacante: Criatura, defensor: Jogador): void {
-    for (const linha of ORDEM_DAS_LINHAS) {
-        for (const coluna of ORDEM_DAS_COLUNAS) {
+    private resolverCombate(criaturaAtacante: Criatura, colunaOrigem: Coluna, defensor: Jogador): void {
+        for (const linha of ORDEM_DAS_LINHAS) {
             
-            // Usamos o método do domínio, sem encostar nas arrays do tabuleiro
-            const criaturaDefensora = defensor.tabuleiro.obterCriatura(linha, coluna);
-            
-            if (criaturaDefensora != null) {
-                console.log(`${criaturaAtacante.nome} ataca ${criaturaDefensora.nome} com ${criaturaAtacante.ataque} de ataque!`);
-                criaturaDefensora.receberDano(criaturaAtacante.ataque);
-                console.log(`${criaturaDefensora.nome} está com ${criaturaDefensora.vida} de vida!`);
+            // Variáveis para guardar o "vencedor" da varredura atual
+            let alvoMaisProximo: Criatura | null = null;
+            let colunaDoAlvo: Coluna | null = null;
+            let menorDistancia: number = Infinity;
+
+            for (const coluna of ORDEM_DAS_COLUNAS) {
+                const criaturaDefensora = defensor.tabuleiro.obterCriatura(linha, coluna);
                 
-                if (!criaturaDefensora.estaVivo()) {
-                    console.log(`${criaturaDefensora.nome} foi destruida!`);
-                    // Passamos a coordenada exata de onde ela estava para remover
-                    defensor.tabuleiro.removerCriatura(linha, coluna);
+                if (criaturaDefensora != null && criaturaDefensora.estaVivo()) {
+                    
+                    // A matemática pura de proximidade em 1D
+                    const distancia = Math.abs(colunaOrigem - coluna);
+
+                    // Se a distância for ESTRITAMENTE menor, atualiza. 
+                    if (distancia < menorDistancia) {
+                        alvoMaisProximo = criaturaDefensora;
+                        colunaDoAlvo = coluna;
+                        menorDistancia = distancia;
+                    }
+                }
+            }
+
+            if (alvoMaisProximo != null && colunaDoAlvo != null) {
+                console.log(`${criaturaAtacante.nome} (Col ${colunaOrigem}) ataca ${alvoMaisProximo.nome} (Col ${colunaDoAlvo}) com ${criaturaAtacante.ataque} de ataque!`);
+                alvoMaisProximo.receberDano(criaturaAtacante.ataque);
+                console.log(`${alvoMaisProximo.nome} está com ${alvoMaisProximo.vida} de vida!`);
+                
+                if (!alvoMaisProximo.estaVivo()) {
+                    console.log(`${alvoMaisProximo.nome} foi destruída!`);
+                    defensor.tabuleiro.removerCriatura(linha, colunaDoAlvo);
                 }
                 
-                // Encerra o combate imediatamente após bater no primeiro alvo válido
+                // Combate resolvido, saímos da função para não varrer a linha de trás.
                 return;
             }
         }
     }
-}
 
     private podeAtacar(possivelAtacante: Criatura, linha: Linha): boolean {
         switch(possivelAtacante.tipoAtaque) {

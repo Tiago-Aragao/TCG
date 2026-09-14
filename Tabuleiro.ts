@@ -1,10 +1,16 @@
 import { Criatura } from "./Criatura";
 
+// Enum e Types:
 export type Linha = "frente" | "fundo";
 export enum Coluna {
     Esquerda = 0,
     Meio = 1,
     Direita = 2
+}
+export t
+ype Posicao = {
+    linha: Linha,
+    coluna: Coluna
 }
 
 export class Tabuleiro {
