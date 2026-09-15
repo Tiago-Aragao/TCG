@@ -25,7 +25,7 @@ export class Partida {
 
     public executarPartida(): Jogador | null {
         while (this.jogador1.estaVivo() && this.jogador2.estaVivo() && this.turnoAtual <= 100) {
-            this.executarTurno();
+            this.executarProximoTurno();
         }
         if (!this.jogador1.estaVivo()) {
             return this.jogador2;
@@ -37,25 +37,28 @@ export class Partida {
         
     }
 
-    private executarTurno(): void {
+    private podeAtacarJogador(): boolean {
+        // Jogador1 não pode mais atacar o Jogador2 no turno 1:
+        return this.turnoAtual > 1;
+    }
+    
+    public executarProximoTurno(): void {
         console.log(`Turno: ${this.turnoAtual}`);
-
-        // Declaração das criaturas atacantes e defensoras:
+        
         const atacante = (this.turnoAtual % 2 !== 0) ? this.jogador1 : this.jogador2;
         const defensor = (this.turnoAtual % 2 !== 0) ? this.jogador2 : this.jogador1;
 
-        // Inicio do loop para procurar as criaturas atacantes:
         for (const linha of ORDEM_DAS_LINHAS) {
             for (const coluna of ORDEM_DAS_COLUNAS) {
-                // Ao encontrar uma criatura atacante guardo ela:
                 const criaturaAtacante = atacante.tabuleiro.obterCriatura(linha, coluna);
-                // Checagem de segurança:
+                
                 if (criaturaAtacante != null && criaturaAtacante.estaVivo()) {
-                    // Verifico se ela pode atacar da posição que esta alocada:
+                    
+                    // Verifica se a criatura está na linha certa para o seu tipo de ataque
                     if (this.podeAtacar(criaturaAtacante, linha)) {
-                        // Agora eu pego o alvo que ela irá atacar:
+                        
                         const alvoEncontrado = this.encontrarAlvo(coluna, defensor);
-                        // Verificação de segurança:
+                        
                         if (alvoEncontrado != null) {
                             this.resolverCombate(
                                 criaturaAtacante,
@@ -63,12 +66,20 @@ export class Partida {
                                 alvoEncontrado.posicao,
                                 defensor
                             );
-                        } else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
-                            console.log(`${criaturaAtacante.nome} atacou o ${defensor.nome} com ${criaturaAtacante.ataque} de ataque!`);
-                            defensor.receberDano(criaturaAtacante.ataque);
-                            console.log(`${defensor.nome} | ${defensor.vidaAtual}/${defensor.vidaMaxima}`);
                         }
-                    // Caso ela esteja na posição incorreta:
+                        // CAMPO VAZIO: Tentativa de Ataque Direto
+                        else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
+                            
+                            // A única regra que impede o ataque direto de QUALQUER criatura é o Turno 1
+                            if (this.podeAtacarJogador()) {
+                                console.log(`${criaturaAtacante.nome} atacou o ${defensor.nome} DIRETAMENTE com ${criaturaAtacante.ataque} de dano!`);
+                                defensor.receberDano(criaturaAtacante.ataque);
+                                console.log(`${defensor.nome} | ${defensor.vidaAtual}/${defensor.vidaMaxima}`);
+                            } else {
+                                console.log(`${criaturaAtacante.nome} não pode atacar o jogador diretamente no Turno 1.`);
+                            }
+                            
+                        }
                     } else {
                         console.log(`${criaturaAtacante.nome} não pode atacar na linha: ${linha}`);
                     }
