@@ -3,9 +3,299 @@ import { Criatura } from "../Criatura";
 import { Jogador } from "../Jogador";
 import { Coluna } from "../Tabuleiro";
 import { Partida } from "../Partida";
+import { Deck } from "../Deck";
+import { CartaCriatura } from "../CartaCriatura";
+
+
+/*
+ * Cria um jogador com um deck vazio.
+ *
+ * Utilizado nos testes de combate, onde as cartas ainda
+ * não fazem parte do comportamento sendo testado.
+ */
+function criarJogadorSemCartas(nome: string): Jogador {
+    const deck = new Deck(`Deck ${nome}`);
+    return new Jogador(nome, deck);
+}
+
+
+/*
+ * Cria um Deck contendo a quantidade solicitada de cartas.
+ *
+ * Utilizado nos testes de abertura, compra e Mulligan.
+ */
+function criarDeckComCartas(
+    quantidade: number,
+    idInicial: number = 1
+): Deck {
+
+    const deck = new Deck("Deck Teste");
+
+    for (let i = 0; i < quantidade; i++) {
+        const carta = new CartaCriatura(
+            idInicial + i,
+            `Criatura ${idInicial + i}`,
+            1,
+            1,
+            1
+        );
+
+        deck.adicionarCarta(carta);
+    }
+
+    return deck;
+}
 
 
 describe("Partida", () => {
+
+    describe("Abertura da partida", () => {
+
+        test("deve distribuir 5 cartas para cada jogador ao iniciar a partida", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador2.mao).toHaveLength(5);
+
+            expect(jogador1.deck.tamanhoDeck()).toBe(5);
+            expect(jogador2.deck.tamanhoDeck()).toBe(5);
+        });
+
+
+        test("não deve distribuir a mão inicial novamente se a partida já foi iniciada", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+            partida.iniciarPartida();
+
+            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador2.mao).toHaveLength(5);
+
+            expect(jogador1.deck.tamanhoDeck()).toBe(5);
+            expect(jogador2.deck.tamanhoDeck()).toBe(5);
+        });
+
+
+        test("executarProximoTurno deve iniciar a partida automaticamente se necessário", () => {
+            const deck1 = criarDeckComCartas(5, 1);
+            const deck2 = criarDeckComCartas(5, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.executarProximoTurno();
+
+            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador2.mao).toHaveLength(5);
+            expect(partida.turnoAtual).toBe(2);
+        });
+
+    });
+
+
+    describe("Mulligan", () => {
+
+        test("não deve permitir Mulligan antes da partida ser iniciada", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            const resultado = partida.solicitarMulligan(jogador1);
+
+            expect(resultado).toBe(false);
+            expect(jogador1.mao).toHaveLength(0);
+            expect(jogador1.deck.tamanhoDeck()).toBe(10);
+        });
+
+
+        test("deve permitir que o jogador faça Mulligan durante a abertura", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            const resultado = partida.solicitarMulligan(jogador1);
+
+            expect(resultado).toBe(true);
+            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador1.deck.tamanhoDeck()).toBe(5);
+        });
+
+
+        test("cada jogador pode fazer apenas um Mulligan", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            const primeiroMulligan = partida.solicitarMulligan(jogador1);
+            const segundoMulligan = partida.solicitarMulligan(jogador1);
+
+            expect(primeiroMulligan).toBe(true);
+            expect(segundoMulligan).toBe(false);
+
+            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador1.deck.tamanhoDeck()).toBe(5);
+        });
+
+
+        test("o Mulligan de um jogador não deve impedir o Mulligan do outro", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("João", deck1);
+            const jogador2 = new Jogador("João", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            const mulliganJ1 = partida.solicitarMulligan(jogador1);
+            const mulliganJ2 = partida.solicitarMulligan(jogador2);
+
+            expect(mulliganJ1).toBe(true);
+            expect(mulliganJ2).toBe(true);
+        });
+
+
+        test("não deve permitir Mulligan depois que o primeiro turno começar", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+            partida.executarProximoTurno();
+
+            const resultado = partida.solicitarMulligan(jogador1);
+
+            expect(resultado).toBe(false);
+            expect(jogador1.mao).toHaveLength(5);
+        });
+
+    });
+
+
+    describe("Draw Phase", () => {
+
+        test("Jogador 1 não deve comprar carta no turno 1", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            expect(jogador1.mao).toHaveLength(5);
+
+            partida.executarProximoTurno();
+
+            expect(jogador1.mao).toHaveLength(5);
+        });
+
+
+        test("Jogador 2 deve comprar carta no início do seu primeiro turno", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            expect(jogador2.mao).toHaveLength(5);
+
+            /*
+             * Turno 1 = Jogador 1.
+             */
+            partida.executarProximoTurno();
+
+            expect(jogador2.mao).toHaveLength(5);
+
+            /*
+             * Turno 2 = Jogador 2.
+             */
+            partida.executarProximoTurno();
+
+            expect(jogador2.mao).toHaveLength(6);
+        });
+
+
+        test("Jogador 1 deve comprar normalmente a partir do turno 3", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            expect(jogador1.mao).toHaveLength(5);
+
+            /*
+             * Turno 1 = Jogador 1.
+             */
+            partida.executarProximoTurno();
+
+            expect(jogador1.mao).toHaveLength(5);
+
+            /*
+             * Turno 2 = Jogador 2.
+             */
+            partida.executarProximoTurno();
+
+            expect(jogador1.mao).toHaveLength(5);
+
+            /*
+             * Turno 3 = Jogador 1.
+             */
+            partida.executarProximoTurno();
+
+            expect(jogador1.mao).toHaveLength(6);
+        });
+
+    });
+
 
     describe("Ordem dos turnos", () => {
 
@@ -13,8 +303,8 @@ describe("Partida", () => {
             const criaturaJ1 = new Criatura("Goblin J1", 10, 5);
             const criaturaJ2 = new Criatura("Goblin J2", 10, 5);
 
-            const jogador1 = new Jogador("Jogador 1", [criaturaJ1]);
-            const jogador2 = new Jogador("Jogador 2", [criaturaJ2]);
+            const jogador1 = criarJogadorSemCartas("Jogador 1");
+            const jogador2 = criarJogadorSemCartas("Jogador 2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 criaturaJ1,
@@ -32,11 +322,6 @@ describe("Partida", () => {
 
             partida.executarProximoTurno();
 
-            /*
-             * Jogador 1 começa.
-             * Portanto, sua criatura deve atacar primeiro
-             * e destruir a criatura do Jogador 2.
-             */
             expect(
                 jogador2.tabuleiro.obterCriatura(
                     "frente",
@@ -57,8 +342,8 @@ describe("Partida", () => {
             const criaturaJ1 = new Criatura("Goblin J1", 3, 10);
             const alvoJ2 = new Criatura("Alvo J2", 1, 100);
 
-            const jogador1 = new Jogador("Jogador 1", [criaturaJ1]);
-            const jogador2 = new Jogador("Jogador 2", [alvoJ2]);
+            const jogador1 = criarJogadorSemCartas("Jogador 1");
+            const jogador2 = criarJogadorSemCartas("Jogador 2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 criaturaJ1,
@@ -78,15 +363,8 @@ describe("Partida", () => {
 
             partida.executarProximoTurno();
 
-            /*
-             * Um único turno foi executado.
-             * Logo o turno atual deve ter avançado de 1 para 2.
-             */
             expect(partida.turnoAtual).toBe(2);
 
-            /*
-             * O dano aconteceu apenas uma vez.
-             */
             expect(alvoJ2.vida).toBe(97);
             expect(criaturaJ1.vida).toBe(10);
         });
@@ -110,8 +388,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -148,8 +426,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -167,10 +445,6 @@ describe("Partida", () => {
 
             partida.executarProximoTurno();
 
-            /*
-             * O Guerreiro está no fundo.
-             * Corpo-a-corpo só pode atacar pela frente.
-             */
             expect(atacante.vida).toBe(10);
             expect(alvo.vida).toBe(100);
         });
@@ -190,8 +464,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -227,8 +501,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -265,8 +539,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -302,8 +576,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [alvo]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -336,8 +610,8 @@ describe("Partida", () => {
                 10
             );
 
-            const alvoEsquerda = new Criatura(
-                "Alvo Esquerdo",
+            const alvoMeio = new Criatura(
+                "Alvo Meio",
                 1,
                 100
             );
@@ -348,22 +622,19 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador(
-                "J2",
-                [alvoEsquerda, alvoDireita]
-            );
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
                 "frente",
-                Coluna.Meio
+                Coluna.Esquerda
             );
 
             jogador2.tabuleiro.conjurarCriatura(
-                alvoEsquerda,
+                alvoMeio,
                 "frente",
-                Coluna.Esquerda
+                Coluna.Meio
             );
 
             jogador2.tabuleiro.conjurarCriatura(
@@ -377,15 +648,12 @@ describe("Partida", () => {
             partida.executarProximoTurno();
 
             /*
-             * O atacante está no meio.
-             * Esquerda e direita estão à mesma distância.
+             * O atacante está na esquerda.
              *
-             * Como a ordem das colunas é:
-             * esquerda -> meio -> direita
-             *
-             * a esquerda deve ser escolhida no desempate.
+             * Distância até o meio = 1
+             * Distância até a direita = 2
              */
-            expect(alvoEsquerda.vida).toBe(97);
+            expect(alvoMeio.vida).toBe(97);
             expect(alvoDireita.vida).toBe(100);
         });
 
@@ -409,11 +677,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador(
-                "J2",
-                [alvoEsquerda, alvoDireita]
-            );
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -461,11 +726,8 @@ describe("Partida", () => {
                 100
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador(
-                "J2",
-                [alvoFrente, alvoFundo]
-            );
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -489,9 +751,6 @@ describe("Partida", () => {
 
             partida.executarProximoTurno();
 
-            /*
-             * A criatura da frente deve receber o ataque primeiro.
-             */
             expect(alvoFrente.vida).toBe(97);
             expect(alvoFundo.vida).toBe(100);
         });
@@ -514,8 +773,8 @@ describe("Partida", () => {
                 5
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", [defensor]);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -553,8 +812,8 @@ describe("Partida", () => {
                 10
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", []);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -579,8 +838,8 @@ describe("Partida", () => {
                 10
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", []);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -602,14 +861,14 @@ describe("Partida", () => {
 
             /*
              * Turno 2:
-             * J2 não possui criatura para atacar.
-             * Depois disso, o turno 3 será de J1 novamente.
-             *
-             * Como o objetivo é validar que a regra de ataque direto
-             * está liberada após o turno 1, avançamos até o próximo
-             * turno de J1.
+             * J2 joga, mas não possui criaturas.
              */
             partida.executarProximoTurno();
+
+            /*
+             * Turno 3:
+             * J1 pode atacar diretamente.
+             */
             partida.executarProximoTurno();
 
             expect(jogador2.vidaAtual).toBeLessThan(vidaInicial);
@@ -623,8 +882,8 @@ describe("Partida", () => {
                 10
             );
 
-            const jogador1 = new Jogador("J1", [atacante]);
-            const jogador2 = new Jogador("J2", []);
+            const jogador1 = criarJogadorSemCartas("J1");
+            const jogador2 = criarJogadorSemCartas("J2");
 
             jogador1.tabuleiro.conjurarCriatura(
                 atacante,
@@ -640,8 +899,7 @@ describe("Partida", () => {
             partida.executarProximoTurno();
 
             /*
-             * Turno 2: ainda é o turno do Jogador 2.
-             * Não há criaturas para atacar.
+             * Turno 2: turno do Jogador 2.
              */
             partida.executarProximoTurno();
 
