@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { CartaCriatura } from "../CartaCriatura";
 import { Deck } from "../Deck";
 import { Jogador } from "../Jogador";
+import { Coluna } from "../Tabuleiro";
 
 function criarCarta(id: number): CartaCriatura {
     return new CartaCriatura(
@@ -213,4 +214,110 @@ describe("Mana", () => {
 
         expect(jogador.mostrarMana).toBe(6);
     });
+});
+
+describe("Jogar carta da mão", () => {
+
+    test("deve jogar uma carta da mão quando possui mana suficiente e a posição está livre", () => {
+        const deck = new Deck("Deck Teste");
+        const carta = criarCarta(1);
+
+        deck.adicionarCarta(carta);
+
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.comprarCarta();
+        jogador.gerarManaTurno(1);
+
+        const resultado = jogador.jogarCartaMao(
+            carta,
+            { linha: "frente", coluna: Coluna.Meio }
+        );
+
+        expect(resultado).toBe(true);
+        expect(jogador.mao).not.toContain(carta);
+        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).not.toBeNull();
+        expect(jogador.mostrarMana).toBe(0);
+    });
+
+    test("não deve jogar a carta quando não possui mana suficiente", () => {
+        const deck = new Deck("Deck Teste");
+        const carta = new CartaCriatura(
+            1,
+            "Criatura Cara",
+            2,
+            1,
+            1
+        );
+
+        deck.adicionarCarta(carta);
+
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.comprarCarta();
+        jogador.gerarManaTurno(1);
+
+        const resultado = jogador.jogarCartaMao(
+            carta,
+            { linha: "frente", coluna: Coluna.Meio }
+        );
+
+        expect(resultado).toBe(false);
+        expect(jogador.mao).toContain(carta);
+        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).toBeNull();
+        expect(jogador.mostrarMana).toBe(1);
+    });
+
+    test("não deve jogar a carta quando a posição está ocupada", () => {
+        const deck = new Deck("Deck Teste");
+
+        const carta1 = criarCarta(1);
+        const carta2 = criarCarta(2);
+
+        deck.adicionarCarta(carta1);
+        deck.adicionarCarta(carta2);
+
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.comprarCarta();
+        jogador.comprarCarta();
+
+        jogador.gerarManaTurno(3);
+
+        jogador.jogarCartaMao(
+            carta1,
+            { linha: "frente", coluna: Coluna.Meio }
+        );
+
+        const manaAntesDaSegundaJogada = jogador.mostrarMana;
+
+        const resultado = jogador.jogarCartaMao(
+            carta2,
+            { linha: "frente", coluna: Coluna.Meio }
+        );
+
+        expect(resultado).toBe(false);
+        expect(jogador.mao).toContain(carta2);
+        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).not.toBeNull();
+        expect(jogador.mostrarMana).toBe(manaAntesDaSegundaJogada);
+    });
+
+    test("não deve jogar uma carta que não pertence à mão", () => {
+        const deck = new Deck("Deck Teste");
+        const carta = criarCarta(1);
+
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(1);
+
+        const resultado = jogador.jogarCartaMao(
+            carta,
+            { linha: "frente", coluna: Coluna.Meio }
+        );
+
+        expect(resultado).toBe(false);
+        expect(jogador.mostrarMana).toBe(1);
+        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).toBeNull();
+    });
+
 });
