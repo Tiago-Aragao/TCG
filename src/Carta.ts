@@ -1,5 +1,5 @@
 export type TipoCarta = "Criatura" | "Mágica" | "Equipamento";
-// export type Tribo = "Humana" | "Animal" | "Monstruosa" | "Mortos-Vivos" | "Robôs"/
+// export type Tribo = "Humana" | "Animal" | "Monstruosa" | "Mortos-Vivos" | "Robôs || Alien" // Futuramente terá um Random Randint ou algo do genero que será um tipo que terão cartas com danos aleatorios em alvos aleatorios.
 
 export abstract class Carta {
     readonly id: number;
