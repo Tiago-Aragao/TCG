@@ -33,6 +33,16 @@ export class Tabuleiro {
         return true;
     }
 
+    public podeConjurarCriatura (linha: Linha, coluna: Coluna): boolean {
+        const qualFileira = linha === 'frente' ? this.frente: this.fundo;
+        if(qualFileira[coluna] != null) {
+            // Espaço já ocupado:
+            return false;
+        }
+        // Espaço estava vazio, logo:
+        return true;
+    }
+
     public removerCriatura(local: Linha, posicao: Coluna): void {
         if (local === "frente") {
             this.frente[posicao] = null;
