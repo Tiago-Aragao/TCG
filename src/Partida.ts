@@ -77,7 +77,8 @@ export class Partida {
     }
 
     private executarFasePreparacao(jogador: Jogador): void {
-        // Futuramente resolver efeitos de fase de preparação.
+        // Na fase de preparação o jogador recebe a mana do turno:
+        jogador.gerarManaTurno(this.turnoAtual);
     }
 
     private executarFaseCompra(jogador: Jogador): void {

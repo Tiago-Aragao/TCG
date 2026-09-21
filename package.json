@@ -9,7 +9,11 @@
     "test:ui": "vitest --ui"
   },
   "devDependencies": {
+    "tsx": "^4.23.13",
     "typescript": "^5.0.0",
     "vitest": "^5.0.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

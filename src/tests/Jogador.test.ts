@@ -125,3 +125,92 @@ describe("Jogador", () => {
     });
 
 });
+
+describe("Mana", () => {
+
+    test("deve gerar 1 de mana nos turnos 1 e 2", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(1);
+
+        expect(jogador.mostrarMana).toBe(1);
+
+        jogador.gerarManaTurno(2);
+
+        expect(jogador.mostrarMana).toBe(1);
+    });
+
+    test("deve gerar 2 de mana nos turnos 3 e 4", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(3);
+
+        expect(jogador.mostrarMana).toBe(2);
+
+        jogador.gerarManaTurno(4);
+
+        expect(jogador.mostrarMana).toBe(2);
+    });
+
+    test("deve aumentar a geração de mana a cada dois turnos", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(5);
+        expect(jogador.mostrarMana).toBe(3);
+
+        jogador.gerarManaTurno(7);
+        expect(jogador.mostrarMana).toBe(4);
+
+        jogador.gerarManaTurno(9);
+        expect(jogador.mostrarMana).toBe(5);
+    });
+
+    test("deve gerar no máximo 6 de mana automaticamente", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(11);
+
+        expect(jogador.mostrarMana).toBe(6);
+
+        jogador.gerarManaTurno(20);
+
+        expect(jogador.mostrarMana).toBe(6);
+    });
+
+    test("deve substituir o mana do turno anterior pela nova geração automática", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(11);
+
+        expect(jogador.mostrarMana).toBe(6);
+
+        jogador.gerarManaTurno(15);
+
+        expect(jogador.mostrarMana).toBe(6);
+    });
+
+    test("deve reduzir o mana ao gastar", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(11);
+        jogador.gastarMana(3);
+
+        expect(jogador.mostrarMana).toBe(3);
+    });
+
+    test("não deve gastar mana quando o valor informado for negativo", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador 1", deck);
+
+        jogador.gerarManaTurno(11);
+        jogador.gastarMana(-2);
+
+        expect(jogador.mostrarMana).toBe(6);
+    });
+});
