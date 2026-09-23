@@ -914,3 +914,54 @@ describe("Partida", () => {
     });
 
 });
+describe("Jogador ativo e defensor", () => {
+
+    test("no turno 1, o jogador 1 é o ativo e o jogador 2 é o defensor", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        expect(partida.obterJogadorAtivo()).toBe(jogador1);
+        expect(partida.obterJogadorDefensor()).toBe(jogador2);
+    });
+
+    test("no turno 2, o jogador 2 é o ativo e o jogador 1 é o defensor", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.turnoAtual = 2;
+
+        expect(partida.obterJogadorAtivo()).toBe(jogador2);
+        expect(partida.obterJogadorDefensor()).toBe(jogador1);
+    });
+
+    test("a alternância continua nos turnos seguintes", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.turnoAtual = 3;
+
+        expect(partida.obterJogadorAtivo()).toBe(jogador1);
+        expect(partida.obterJogadorDefensor()).toBe(jogador2);
+
+        partida.turnoAtual = 4;
+
+        expect(partida.obterJogadorAtivo()).toBe(jogador2);
+        expect(partida.obterJogadorDefensor()).toBe(jogador1);
+    });
+
+});
