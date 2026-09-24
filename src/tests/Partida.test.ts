@@ -7,6 +7,106 @@ import { Deck } from "../Deck";
 import { CartaCriatura } from "../CartaCriatura";
 
 
+/**
+ * Saber se sempre que é criada a partida deve retornar não iniciada:
+ */
+
+describe("Estado da partida", () => {
+
+    test("uma nova partida deve começar como NaoIniciada", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        expect(partida.estado).toBe("NaoIniciada");
+    });
+
+    test("deve entrar em AguardandoTurno depois que o jogador passar o turno", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+        partida.iniciarTurno();
+
+        expect(partida.estado).toBe("FasePrincipal");
+
+        partida.passarTurno();
+
+        expect(partida.estado).toBe("AguardandoTurno");
+    });
+
+    test("não deve passar o turno novamente enquanto estiver AguardandoTurno", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+        partida.iniciarTurno();
+
+        expect(partida.turnoAtual).toBe(1);
+        expect(partida.estado).toBe("FasePrincipal");
+
+        partida.passarTurno();
+
+        expect(partida.turnoAtual).toBe(2);
+        expect(partida.estado).toBe("AguardandoTurno");
+
+        partida.passarTurno();
+
+        expect(partida.turnoAtual).toBe(2);
+        expect(partida.estado).toBe("AguardandoTurno");
+    });
+
+    test("não deve iniciar novamente um turno que já está na FasePrincipal", () => {
+        const deck1 = criarDeckComCartas(10, 1);
+        const deck2 = criarDeckComCartas(10, 100);
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        // Turno 1
+        partida.iniciarPartida();
+        partida.iniciarTurno();
+        partida.passarTurno();
+
+        // Turno 2 — Jogador 2
+        partida.iniciarTurno();
+
+        expect(partida.turnoAtual).toBe(2);
+        expect(partida.estado).toBe("FasePrincipal");
+
+        const tamanhoMaoAntes = jogador2.mao.length;
+        const tamanhoDeckAntes = jogador2.deck.tamanhoDeck();
+        const manaAntes = jogador2.mostrarMana;
+
+        // Tentativa indevida de iniciar novamente o mesmo turno
+        partida.iniciarTurno();
+
+        expect(partida.turnoAtual).toBe(2);
+        expect(partida.estado).toBe("FasePrincipal");
+
+        expect(jogador2.mao).toHaveLength(tamanhoMaoAntes);
+        expect(jogador2.deck.tamanhoDeck()).toBe(tamanhoDeckAntes);
+        expect(jogador2.mostrarMana).toBe(manaAntes);
+    });
+
+});
+
 /*
  * Cria um jogador com um deck vazio.
  *
@@ -111,7 +211,7 @@ describe("Partida", () => {
 
     describe("Mulligan", () => {
 
-        test("não deve permitir Mulligan antes da partida ser iniciada", () => {
+        test("não deve permitir Mulligan depois que o primeiro turno começar", () => {
             const deck1 = criarDeckComCartas(10, 1);
             const deck2 = criarDeckComCartas(10, 100);
 
@@ -120,11 +220,13 @@ describe("Partida", () => {
 
             const partida = new Partida(jogador1, jogador2);
 
+            partida.iniciarPartida();
+            partida.iniciarTurno();
+
             const resultado = partida.solicitarMulligan(jogador1);
 
             expect(resultado).toBe(false);
-            expect(jogador1.mao).toHaveLength(0);
-            expect(jogador1.deck.tamanhoDeck()).toBe(10);
+            expect(jogador1.mao).toHaveLength(5);
         });
 
 
