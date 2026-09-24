@@ -16,14 +16,15 @@ export type EstadoDaPartida =
     | "NaoIniciada"
     | "Abertura"
     | "FasePrincipal"
-    | "AguardandoTurno";
+    | "AguardandoTurno"
+    | "Encerrada";
 
 // Classe Partida:
 export class Partida {
     
     public readonly jogador1: Jogador;
     public readonly jogador2: Jogador;
-    public turnoAtual: number;
+    private __turnoAtual: number;
     
     private estadoPartida: EstadoDaPartida = "NaoIniciada";
     private mulligansRealizados: Set<Jogador> = new Set();
@@ -32,7 +33,7 @@ export class Partida {
     constructor(jogador1: Jogador, jogador2: Jogador) {
         this.jogador1 = jogador1;
         this.jogador2 = jogador2;
-        this.turnoAtual = 1;
+        this.__turnoAtual = 1;
     }
 
     // Meu getters e leitores de estado:
@@ -40,12 +41,16 @@ export class Partida {
         return this.estadoPartida;
     }
 
+    public get turnoAtual(): number {
+        return this.__turnoAtual;
+    }
+
     public obterJogadorAtivo(): Jogador {
-        return (this.turnoAtual % 2 !== 0) ? this.jogador1 : this.jogador2;
+        return (this.__turnoAtual % 2 !== 0) ? this.jogador1 : this.jogador2;
     }
 
     public obterJogadorDefensor(): Jogador {
-        return (this.turnoAtual % 2 !== 0) ? this.jogador2 : this.jogador1;
+        return (this.__turnoAtual % 2 !== 0) ? this.jogador2 : this.jogador1;
     }
 
     // Metodos publicos que serão chamados pela API:
@@ -120,6 +125,7 @@ export class Partida {
     }
 
     public passarTurno(): void {
+
         if (this.estadoPartida !== 'FasePrincipal') {
             // Faço nada impedindo de usar passar turno mais de uma vez:
             return;
@@ -130,15 +136,37 @@ export class Partida {
         const jogadorDefensor = this.obterJogadorDefensor();
         // Combate:
         this.executarFaseCombate(jogadorAtacante, jogadorDefensor);
+        // Agora verifico logo após a fase de combate se o jogador defensor merreu:
+        if (!jogadorDefensor.estaVivo()) {
+            /**
+             * Morrendo atualizo o estado da partida e encerro a função
+             * que irá encerrar o loop, como o estado da partida foi atualizado.
+             */
+            this.estadoPartida = 'Encerrada';
+            return;
+        }
+        /**
+         * Caso contrario continuamos a partida normalmente aumentando o turno etc e tals.
+         * Tudo nos conformes.
+         */
         // Mudança de turno:
-        this.executarFaseFinal(); // Aqui faz o this.turnoAtual++;
+        this.executarFaseFinal(); // Aqui faz o this.__turnoAtual++;
         // Mudança de estado:
         this.estadoPartida = 'AguardandoTurno';
     }
 
     // Meus loops automaticos:
     public executarPartida(): Jogador | null {
-        while (this.jogador1.estaVivo() && this.jogador2.estaVivo() && this.turnoAtual <= 100) {
+        /*
+         * Não permito que o modo automático assuma uma
+         * partida no meio de uma FasePrincipal interativa.
+         */
+        if (this.estadoPartida === "FasePrincipal") {
+            return null;
+        }
+
+        // Caso passe continuo:
+        while (this.estadoPartida !== "Encerrada" && this.__turnoAtual <= 100) {
             this.executarProximoTurno();
         }
         if (!this.jogador1.estaVivo()) return this.jogador2;
@@ -147,34 +175,43 @@ export class Partida {
     }
 
     public executarProximoTurno(): void {
+        const podeComecar =
+            this.estadoPartida === 'NaoIniciada' ||
+            this.estadoPartida === 'Abertura' ||
+            this.estadoPartida === 'AguardandoTurno';
         // Protegido contra ser chamado em uma fase principal já aberta:
-        if (this.estadoPartida === 'FasePrincipal') {
+        if (!podeComecar) {
             return;
         }
-        console.log(`--- Turno: ${this.turnoAtual} ---`);
 
+        console.log(`--- Turno: ${this.__turnoAtual} ---`);
+        // Preparação + Compra:
         this.iniciarTurno();
 
-        const atacante = this.obterJogadorAtivo();
-        this.executarFasePrincipal(atacante);
+        /**
+         * Removi a capacidade de o modo automatico tomar decisões durante a partida.
+         * Futuramente a IA vai usar esse metodo para fazer as jogadas que quiser.
+         */
+        
         this.passarTurno();
     }
 
     // Motores internos e completamente privados:
     private executarFasePreparacao(jogador: Jogador): void {
-        jogador.gerarManaTurno(this.turnoAtual);
+        jogador.gerarManaTurno(this.__turnoAtual);
     }
 
     private executarFaseCompra(jogador: Jogador): void {
-        if (this.turnoAtual > 1) {
+        if (this.__turnoAtual > 1) {
             jogador.comprarCarta();
         }
     }
 
-    private executarFasePrincipal(jogador: Jogador): void {
+    // Antigo executarFasePrincipal. Foi descontinuado. Vou segurar ele aqui ainda por uns commits depois apago do codigo:
+    // private executarFasePrincipal(jogador: Jogador): void {
         // Será descontinuado pois percebi que a maquina de estados que fiz é melhor do que simplemente usar um
         // metodo para rodar a main phase do TCG.
-    }
+    //}
 
     private executarFaseCombate(atacante: Jogador, defensor: Jogador): void {
         for (const linha of ORDEM_DAS_LINHAS) {
@@ -205,7 +242,7 @@ export class Partida {
     }
 
     private executarFaseFinal(): void {
-        this.turnoAtual++;
+        this.__turnoAtual++;
     }
 
     // Auxiliares para o combate:
@@ -220,7 +257,7 @@ export class Partida {
     }
 
     private podeAtacarJogador(): boolean {
-        return this.turnoAtual > 1;
+        return this.__turnoAtual > 1;
     }
 
     private encontrarAlvo(colunaOrigem: Coluna, defensor: Jogador): Alvo | null {

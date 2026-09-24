@@ -1313,3 +1313,162 @@ describe("Jogador ativo e defensor", () => {
     });
 
 });
+
+describe("Encerramento da partida", () => {
+
+    test("deve encerrar a partida quando o defensor morrer após o combate", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const atacante = new Criatura(
+            "Finalizador",
+            20,
+            10
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        // Turno 1 - dano direto proibido
+        partida.executarProximoTurno();
+
+        // Turno 2 - jogador 2
+        partida.executarProximoTurno();
+
+        // Turno 3 - jogador 1 pode causar dano direto
+        partida.executarProximoTurno();
+
+        expect(jogador2.estaVivo()).toBe(false);
+        expect(partida.estado).toBe("Encerrada");
+    });
+
+
+    test("não deve avançar o número do turno quando a partida termina", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const atacante = new Criatura(
+            "Finalizador",
+            20,
+            10
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.executarProximoTurno(); // turno 1
+        partida.executarProximoTurno(); // turno 2
+
+        expect(partida.turnoAtual).toBe(3);
+
+        partida.executarProximoTurno(); // combate letal do turno 3
+
+        expect(partida.estado).toBe("Encerrada");
+        expect(partida.turnoAtual).toBe(3);
+    });
+
+
+    test("deve resolver todo o combate permitindo overkill antes de encerrar a partida", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const atacante1 = new Criatura(
+            "Atacante 1",
+            50,
+            10
+        );
+
+        const atacante2 = new Criatura(
+            "Atacante 2",
+            50,
+            10
+        );
+
+        const atacante3 = new Criatura(
+            "Atacante 3",
+            48,
+            10
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante1,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante2,
+            "frente",
+            Coluna.Meio
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante3,
+            "frente",
+            Coluna.Direita
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.executarProximoTurno(); // turno 1
+        partida.executarProximoTurno(); // turno 2
+        partida.executarProximoTurno(); // turno 3
+
+        /*
+         * Vida inicial = 20
+         *
+         * 20 - 50 - 50 - 48 = -128
+         *
+         * Portanto todos os atacantes devem resolver,
+         * mesmo que o jogador já tenha passado de 0.
+         */
+        expect(jogador2.vidaAtual).toBe(-128);
+        expect(partida.estado).toBe("Encerrada");
+    });
+
+
+    test("não deve executar novos turnos depois que a partida estiver Encerrada", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const atacante = new Criatura(
+            "Finalizador",
+            20,
+            10
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.executarProximoTurno();
+        partida.executarProximoTurno();
+        partida.executarProximoTurno();
+
+        expect(partida.estado).toBe("Encerrada");
+
+        const turnoAoEncerrar = partida.turnoAtual;
+        const vidaAoEncerrar = jogador2.vidaAtual;
+
+        partida.executarProximoTurno();
+
+        expect(partida.turnoAtual).toBe(turnoAoEncerrar);
+        expect(jogador2.vidaAtual).toBe(vidaAoEncerrar);
+        expect(partida.estado).toBe("Encerrada");
+    });
+
+});
