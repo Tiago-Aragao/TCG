@@ -101,8 +101,8 @@ describe("Jogador", () => {
         jogador.fazerMulliganEuropeu();
 
         /*
-         * Esvaziamos o deck para recuperar as cartas restantes.
-         * Assim conseguimos verificar que nenhuma carta desapareceu.
+         * Esvazio o deck para recuperar as cartas restantes.
+         * Assim consigo verificar que nenhuma carta somiu.
          */
         const cartasRestantesNoDeck: CartaCriatura[] = [];
 
@@ -120,6 +120,7 @@ describe("Jogador", () => {
         ];
 
         expect(todasAsCartas).toHaveLength(10);
+
         expect(todasAsCartas).toEqual(
             expect.arrayContaining(cartasOriginais)
         );
@@ -214,11 +215,12 @@ describe("Mana", () => {
 
         expect(jogador.mostrarMana).toBe(6);
     });
+
 });
 
 describe("Jogar carta da mão", () => {
 
-    test("deve jogar uma carta da mão quando possui mana suficiente e a posição está livre", () => {
+    test("deve retornar Sucesso ao jogar uma carta com mana suficiente e posição livre", () => {
         const deck = new Deck("Deck Teste");
         const carta = criarCarta(1);
 
@@ -234,14 +236,23 @@ describe("Jogar carta da mão", () => {
             { linha: "frente", coluna: Coluna.Meio }
         );
 
-        expect(resultado).toBe(true);
+        expect(resultado).toBe("Sucesso");
+
         expect(jogador.mao).not.toContain(carta);
-        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).not.toBeNull();
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).not.toBeNull();
+
         expect(jogador.mostrarMana).toBe(0);
     });
 
-    test("não deve jogar a carta quando não possui mana suficiente", () => {
+    test("deve retornar ManaInsuficiente quando não possui mana suficiente", () => {
         const deck = new Deck("Deck Teste");
+
         const carta = new CartaCriatura(
             1,
             "Criatura Cara",
@@ -262,13 +273,21 @@ describe("Jogar carta da mão", () => {
             { linha: "frente", coluna: Coluna.Meio }
         );
 
-        expect(resultado).toBe(false);
+        expect(resultado).toBe("ManaInsuficiente");
+
         expect(jogador.mao).toContain(carta);
-        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).toBeNull();
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).toBeNull();
+
         expect(jogador.mostrarMana).toBe(1);
     });
 
-    test("não deve jogar a carta quando a posição está ocupada", () => {
+    test("deve retornar PosicaoOcupada quando a posição já possui uma criatura", () => {
         const deck = new Deck("Deck Teste");
 
         const carta1 = criarCarta(1);
@@ -284,10 +303,12 @@ describe("Jogar carta da mão", () => {
 
         jogador.gerarManaTurno(3);
 
-        jogador.jogarCartaMao(
+        const primeiraJogada = jogador.jogarCartaMao(
             carta1,
             { linha: "frente", coluna: Coluna.Meio }
         );
+
+        expect(primeiraJogada).toBe("Sucesso");
 
         const manaAntesDaSegundaJogada = jogador.mostrarMana;
 
@@ -296,13 +317,23 @@ describe("Jogar carta da mão", () => {
             { linha: "frente", coluna: Coluna.Meio }
         );
 
-        expect(resultado).toBe(false);
+        expect(resultado).toBe("PosicaoOcupada");
+
         expect(jogador.mao).toContain(carta2);
-        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).not.toBeNull();
-        expect(jogador.mostrarMana).toBe(manaAntesDaSegundaJogada);
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).not.toBeNull();
+
+        expect(jogador.mostrarMana).toBe(
+            manaAntesDaSegundaJogada
+        );
     });
 
-    test("não deve jogar uma carta que não pertence à mão", () => {
+    test("deve retornar CartaNaoEstaNaMao quando a carta não pertence à mão", () => {
         const deck = new Deck("Deck Teste");
         const carta = criarCarta(1);
 
@@ -315,9 +346,16 @@ describe("Jogar carta da mão", () => {
             { linha: "frente", coluna: Coluna.Meio }
         );
 
-        expect(resultado).toBe(false);
+        expect(resultado).toBe("CartaNaoEstaNaMao");
+
         expect(jogador.mostrarMana).toBe(1);
-        expect(jogador.tabuleiro.obterCriatura("frente", Coluna.Meio)).toBeNull();
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).toBeNull();
     });
 
 });
