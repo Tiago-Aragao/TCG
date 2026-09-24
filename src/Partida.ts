@@ -173,7 +173,8 @@ export class Partida {
     }
 
     private executarFasePrincipal(jogador: Jogador): void {
-        // Futuramente gastar mana, baixar criaturas, usar magias etc.
+        // Será descontinuado pois percebi que a maquina de estados que fiz é melhor do que simplemente usar um
+        // metodo para rodar a main phase do TCG.
     }
 
     private executarFaseCombate(atacante: Jogador, defensor: Jogador): void {
