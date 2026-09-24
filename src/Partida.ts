@@ -2,6 +2,7 @@ import { Jogador } from "./Jogador";
 import { Criatura } from "./Criatura";
 import { CartaCriatura } from "./CartaCriatura";
 import { Linha, Coluna, Posicao } from "./Tabuleiro";
+import { ResultadoTentarJogarCarta } from "./tiposResultados";
 
 const ORDEM_DAS_LINHAS: Linha[] = ["frente", "fundo"] as const;
 const ORDEM_DAS_COLUNAS: Coluna[] = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita] as const;
@@ -11,14 +12,6 @@ export type Alvo = {
     criatura: Criatura,
     posicao: Posicao
 }
-export type MensagemParaTratamentoErro =
-    | "Sucesso"
-    | "ManaInsuficiente"
-    | "CartaNaoEstaNaMao"
-    | "PosicaoOcupada"
-    | "ForaDaFasePrincipal"
-    | "JogadorNaoAtivo"
-    | "ForaDoTurno";
 export type EstadoDaPartida =
     | "NaoIniciada"
     | "Abertura"
@@ -41,7 +34,6 @@ export class Partida {
         this.jogador2 = jogador2;
         this.turnoAtual = 1;
     }
-
 
     // Meu getters e leitores de estado:
     public get estado(): EstadoDaPartida {
@@ -103,7 +95,7 @@ export class Partida {
         this.estadoPartida = "FasePrincipal";
     }
 
-    public tentarJogarCarta(cartaEscolhida: CartaCriatura, posicao: Posicao): boolean {
+    public tentarJogarCarta(cartaEscolhida: CartaCriatura, posicao: Posicao): ResultadoTentarJogarCarta {
         /**
          * Só pode ocorrer na fasePrincipal.
          * Deve permitir diversas chamadas para o Jogador jogar quantas cartas quiser e tiver mana para jogar.
@@ -114,7 +106,7 @@ export class Partida {
         if (this.estadoPartida !== "FasePrincipal") {
             // Meu proximo passo é isso aqui retornar uma mensagem de erro especial no futuro. Mas por enquanto o false da
             // para o gasto hihi:
-            return false;
+            return 'ForaDaFasePrincipal';
         }
         const jogadorAtivo = this.obterJogadorAtivo();
         return jogadorAtivo.jogarCartaMao(cartaEscolhida, posicao);

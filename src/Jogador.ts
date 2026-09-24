@@ -1,6 +1,7 @@
 import { Carta } from "./Carta";
 import { CartaCriatura} from "./CartaCriatura"
 import { Tabuleiro, Posicao } from "./Tabuleiro";
+import { ResultadoJogarCartaMao } from "./tiposResultados";
 import { Deck } from "./Deck";
 
 export class Jogador {
@@ -14,7 +15,7 @@ export class Jogador {
     vidaAtual: number;
     // Mana:
     private mana: number = 0;
-    // ----------- 
+    // -----------
     tabuleiro: Tabuleiro;
     deck: Deck;
     mao: Carta[];
@@ -52,18 +53,18 @@ export class Jogador {
     }
 
     // Para fase de preparação:
-    public jogarCartaMao(qualCarta: CartaCriatura, posicao: Posicao): boolean {
+    public jogarCartaMao(qualCarta: CartaCriatura, posicao: Posicao): ResultadoJogarCartaMao {
         // Verifico se a carta existe na mão:
         if (!this.mao.includes(qualCarta)) {
-            return false;
+            return 'CartaNaoEstaNaMao';
         }
         // Verifico se tenho mana suficiente:
         if (!this.possuiManaSuficiente(qualCarta.custoMana)) {
-            return false;
+            return 'ManaInsuficiente';
         }
         //
         if (!this.tabuleiro.podeConjurarCriatura(posicao.linha, posicao.coluna)) {
-            return false;
+            return 'PosicaoOcupada';
         }
         const criatura = qualCarta.criarCriatura();
         this.tabuleiro.conjurarCriatura(criatura, posicao.linha, posicao.coluna);
@@ -71,7 +72,7 @@ export class Jogador {
         // Agora removo ele da mão:
         const indiceCarta = this.mao.findIndex(carta => carta === qualCarta);
         this.mao.splice(indiceCarta, 1);
-        return true;
+        return 'Sucesso';
     }
 
     // Compras de Cartas:
