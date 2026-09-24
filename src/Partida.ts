@@ -104,8 +104,15 @@ export class Partida {
          */
         // Verifico que só pode funcionar na FasePrincipal:
         if (this.estadoPartida !== "FasePrincipal") {
-            // Meu proximo passo é isso aqui retornar uma mensagem de erro especial no futuro. Mas por enquanto o false da
-            // para o gasto hihi:
+            /**
+             * Só pode ocorrer durante a FasePrincipal.
+             * Pode ser chamado diversas vezes durante o mesmo turno,
+             * enquanto o jogador possuir cartas e recursos para jogar.
+             *
+             * Retorna um resultado de domínio indicando sucesso
+             * ou o motivo pelo qual a jogada foi recusada.
+             */
+            // Mudança feita com sucesso:
             return 'ForaDaFasePrincipal';
         }
         const jogadorAtivo = this.obterJogadorAtivo();

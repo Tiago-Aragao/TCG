@@ -25,6 +25,38 @@ describe("Estado da partida", () => {
         expect(partida.estado).toBe("NaoIniciada");
     });
 
+    test("deve entrar em Abertura quando a partida for iniciada", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+
+        expect(partida.estado).toBe("Abertura");
+    });
+
+    test("deve entrar em FasePrincipal quando o turno for iniciado", () => {
+        const deck1 = new Deck("Deck 1");
+        const deck2 = new Deck("Deck 2");
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+
+        expect(partida.estado).toBe("Abertura");
+
+        partida.iniciarTurno();
+
+        expect(partida.estado).toBe("FasePrincipal");
+    });
+
     test("deve entrar em AguardandoTurno depois que o jogador passar o turno", () => {
         const deck1 = new Deck("Deck 1");
         const deck2 = new Deck("Deck 2");
@@ -103,6 +135,27 @@ describe("Estado da partida", () => {
         expect(jogador2.mao).toHaveLength(tamanhoMaoAntes);
         expect(jogador2.deck.tamanhoDeck()).toBe(tamanhoDeckAntes);
         expect(jogador2.mostrarMana).toBe(manaAntes);
+    });
+
+    test("executarProximoTurno não deve encerrar um turno interativo já aberto", () => {
+        const deck1 = criarDeckComCartas(10, 1);
+        const deck2 = criarDeckComCartas(10, 100);
+
+        const jogador1 = new Jogador("Jogador 1", deck1);
+        const jogador2 = new Jogador("Jogador 2", deck2);
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+        partida.iniciarTurno();
+
+        expect(partida.turnoAtual).toBe(1);
+        expect(partida.estado).toBe("FasePrincipal");
+
+        partida.executarProximoTurno();
+
+        expect(partida.turnoAtual).toBe(1);
+        expect(partida.estado).toBe("FasePrincipal");
     });
 
 });
@@ -211,7 +264,7 @@ describe("Partida", () => {
 
     describe("Mulligan", () => {
 
-        test("não deve permitir Mulligan depois que o primeiro turno começar", () => {
+        test("não deve permitir Mulligan antes da partida ser iniciada", () => {
             const deck1 = criarDeckComCartas(10, 1);
             const deck2 = criarDeckComCartas(10, 100);
 
@@ -220,13 +273,11 @@ describe("Partida", () => {
 
             const partida = new Partida(jogador1, jogador2);
 
-            partida.iniciarPartida();
-            partida.iniciarTurno();
-
             const resultado = partida.solicitarMulligan(jogador1);
 
             expect(resultado).toBe(false);
-            expect(jogador1.mao).toHaveLength(5);
+            expect(jogador1.mao).toHaveLength(0);
+            expect(jogador1.deck.tamanhoDeck()).toBe(10);
         });
 
 
@@ -290,6 +341,27 @@ describe("Partida", () => {
         });
 
 
+        test("não deve permitir Mulligan para um jogador que não participa da partida", () => {
+            const deck1 = criarDeckComCartas(10, 1);
+            const deck2 = criarDeckComCartas(10, 100);
+            const deckIntruso = criarDeckComCartas(10, 200);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+            const intruso = new Jogador("Intruso", deckIntruso);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            const resultado = partida.solicitarMulligan(intruso);
+
+            expect(resultado).toBe(false);
+            expect(intruso.mao).toHaveLength(0);
+            expect(intruso.deck.tamanhoDeck()).toBe(10);
+        });
+
+
         test("não deve permitir Mulligan depois que o primeiro turno começar", () => {
             const deck1 = criarDeckComCartas(10, 1);
             const deck2 = criarDeckComCartas(10, 100);
@@ -306,6 +378,165 @@ describe("Partida", () => {
 
             expect(resultado).toBe(false);
             expect(jogador1.mao).toHaveLength(5);
+        });
+
+    });
+
+
+    describe("Jogar carta pela Partida", () => {
+
+        test("deve retornar ForaDaFasePrincipal ao tentar jogar uma carta durante a abertura", () => {
+            const deck1 = new Deck("Deck 1");
+            const deck2 = new Deck("Deck 2");
+
+            const carta = new CartaCriatura(
+                1,
+                "Criatura Teste",
+                1,
+                1,
+                1
+            );
+
+            deck1.adicionarCarta(carta);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+
+            const resultado = partida.tentarJogarCarta(
+                carta,
+                { linha: "frente", coluna: Coluna.Meio }
+            );
+
+            expect(partida.estado).toBe("Abertura");
+            expect(resultado).toBe("ForaDaFasePrincipal");
+            expect(jogador1.mao).toContain(carta);
+            expect(
+                jogador1.tabuleiro.obterCriatura(
+                    "frente",
+                    Coluna.Meio
+                )
+            ).toBeNull();
+        });
+
+
+        test("deve permitir que o jogador ativo jogue uma carta durante a FasePrincipal", () => {
+            const deck1 = new Deck("Deck 1");
+            const deck2 = new Deck("Deck 2");
+
+            const carta = new CartaCriatura(
+                1,
+                "Criatura Teste",
+                1,
+                1,
+                1
+            );
+
+            deck1.adicionarCarta(carta);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+            partida.iniciarTurno();
+
+            const resultado = partida.tentarJogarCarta(
+                carta,
+                { linha: "frente", coluna: Coluna.Meio }
+            );
+
+            expect(resultado).toBe("Sucesso");
+            expect(jogador1.mao).not.toContain(carta);
+            expect(
+                jogador1.tabuleiro.obterCriatura(
+                    "frente",
+                    Coluna.Meio
+                )
+            ).not.toBeNull();
+            expect(jogador1.mostrarMana).toBe(0);
+        });
+
+
+        test("deve propagar ManaInsuficiente retornado pelo jogador ativo", () => {
+            const deck1 = new Deck("Deck 1");
+            const deck2 = new Deck("Deck 2");
+
+            const carta = new CartaCriatura(
+                1,
+                "Criatura Cara",
+                2,
+                1,
+                1
+            );
+
+            deck1.adicionarCarta(carta);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+            partida.iniciarTurno();
+
+            const resultado = partida.tentarJogarCarta(
+                carta,
+                { linha: "frente", coluna: Coluna.Meio }
+            );
+
+            expect(resultado).toBe("ManaInsuficiente");
+            expect(jogador1.mao).toContain(carta);
+            expect(jogador1.mostrarMana).toBe(1);
+            expect(
+                jogador1.tabuleiro.obterCriatura(
+                    "frente",
+                    Coluna.Meio
+                )
+            ).toBeNull();
+        });
+
+
+        test("deve usar a mão do jogador ativo ao tentar jogar uma carta", () => {
+            const deck1 = new Deck("Deck 1");
+            const deck2 = new Deck("Deck 2");
+
+            const cartaJogador2 = new CartaCriatura(
+                1,
+                "Criatura do Jogador 2",
+                1,
+                1,
+                1
+            );
+
+            deck2.adicionarCarta(cartaJogador2);
+
+            const jogador1 = new Jogador("Jogador 1", deck1);
+            const jogador2 = new Jogador("Jogador 2", deck2);
+
+            const partida = new Partida(jogador1, jogador2);
+
+            partida.iniciarPartida();
+            partida.iniciarTurno();
+
+            const resultado = partida.tentarJogarCarta(
+                cartaJogador2,
+                { linha: "frente", coluna: Coluna.Meio }
+            );
+
+            expect(partida.obterJogadorAtivo()).toBe(jogador1);
+            expect(resultado).toBe("CartaNaoEstaNaMao");
+            expect(jogador2.mao).toContain(cartaJogador2);
+            expect(
+                jogador1.tabuleiro.obterCriatura(
+                    "frente",
+                    Coluna.Meio
+                )
+            ).toBeNull();
         });
 
     });
@@ -1031,6 +1262,7 @@ describe("Jogador ativo e defensor", () => {
         expect(partida.obterJogadorDefensor()).toBe(jogador2);
     });
 
+
     test("no turno 2, o jogador 2 é o ativo e o jogador 1 é o defensor", () => {
         const deck1 = new Deck("Deck 1");
         const deck2 = new Deck("Deck 2");
@@ -1040,11 +1272,13 @@ describe("Jogador ativo e defensor", () => {
 
         const partida = new Partida(jogador1, jogador2);
 
-        partida.turnoAtual = 2;
+        partida.executarProximoTurno();
 
+        expect(partida.turnoAtual).toBe(2);
         expect(partida.obterJogadorAtivo()).toBe(jogador2);
         expect(partida.obterJogadorDefensor()).toBe(jogador1);
     });
+
 
     test("a alternância continua nos turnos seguintes", () => {
         const deck1 = new Deck("Deck 1");
@@ -1055,13 +1289,25 @@ describe("Jogador ativo e defensor", () => {
 
         const partida = new Partida(jogador1, jogador2);
 
-        partida.turnoAtual = 3;
-
+        expect(partida.turnoAtual).toBe(1);
         expect(partida.obterJogadorAtivo()).toBe(jogador1);
         expect(partida.obterJogadorDefensor()).toBe(jogador2);
 
-        partida.turnoAtual = 4;
+        partida.executarProximoTurno();
 
+        expect(partida.turnoAtual).toBe(2);
+        expect(partida.obterJogadorAtivo()).toBe(jogador2);
+        expect(partida.obterJogadorDefensor()).toBe(jogador1);
+
+        partida.executarProximoTurno();
+
+        expect(partida.turnoAtual).toBe(3);
+        expect(partida.obterJogadorAtivo()).toBe(jogador1);
+        expect(partida.obterJogadorDefensor()).toBe(jogador2);
+
+        partida.executarProximoTurno();
+
+        expect(partida.turnoAtual).toBe(4);
         expect(partida.obterJogadorAtivo()).toBe(jogador2);
         expect(partida.obterJogadorDefensor()).toBe(jogador1);
     });
