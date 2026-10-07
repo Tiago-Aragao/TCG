@@ -1,6 +1,7 @@
 import { Jogador } from "./Jogador";
 import { Criatura } from "./Criatura";
 import { CartaCriatura } from "./CartaCriatura";
+import { TiposEventos } from "./tiposEventos";
 import { Linha, Coluna, Posicao } from "./Tabuleiro";
 import { ResultadoTentarJogarCarta } from "./tiposResultados";
 
@@ -78,7 +79,7 @@ export class Partida {
 
         this.mulligansRealizados.add(jogador);
         return true;
-}
+    }
 
     public iniciarTurno(): void {
         // Agora uso o meu state para regular o que antes era um bool:
@@ -124,26 +125,32 @@ export class Partida {
         return jogadorAtivo.jogarCartaMao(cartaEscolhida, posicao);
     }
 
-    public passarTurno(): void {
+    public passarTurno(): TiposEventos[] {
 
         if (this.estadoPartida !== 'FasePrincipal') {
-            // Faço nada impedindo de usar passar turno mais de uma vez:
-            return;
+            // Faço nada impedindo de usar passar turno mais de uma vez e retornando um array vazio (nenhum evento):
+            return [];
         }
         // Caso seja aqui eu executo as etapas normalmente:
         // Selecionando atacante e defensor:
         const jogadorAtacante = this.obterJogadorAtivo();
         const jogadorDefensor = this.obterJogadorDefensor();
-        // Combate:
-        this.executarFaseCombate(jogadorAtacante, jogadorDefensor);
+        // Combate e guardando eventos:
+        const eventos = this.executarFaseCombate(jogadorAtacante, jogadorDefensor);
         // Agora verifico logo após a fase de combate se o jogador defensor merreu:
         if (!jogadorDefensor.estaVivo()) {
             /**
              * Morrendo atualizo o estado da partida e encerro a função
              * que irá encerrar o loop, como o estado da partida foi atualizado.
              */
+            eventos.push({
+                tipo: "PartidaEncerrada",
+                vencedorNome: jogadorAtacante.nome,
+                derrotadoNome: jogadorDefensor.nome
+            });
+            // Mudo o estado da partida:
             this.estadoPartida = 'Encerrada';
-            return;
+            return eventos; // retorno encerrando a função.
         }
         /**
          * Caso contrario continuamos a partida normalmente aumentando o turno etc e tals.
@@ -153,6 +160,8 @@ export class Partida {
         this.executarFaseFinal(); // Aqui faz o this.__turnoAtual++;
         // Mudança de estado:
         this.estadoPartida = 'AguardandoTurno';
+        //
+        return eventos;
     }
 
     // Meus loops automaticos:
@@ -174,14 +183,17 @@ export class Partida {
         return null;
     }
 
-    public executarProximoTurno(): void {
+    // Este metodo eu usarei para o fluxo automatico:
+    public executarProximoTurno(): TiposEventos[] {
         const podeComecar =
             this.estadoPartida === 'NaoIniciada' ||
             this.estadoPartida === 'Abertura' ||
             this.estadoPartida === 'AguardandoTurno';
         // Protegido contra ser chamado em uma fase principal já aberta:
+        
         if (!podeComecar) {
-            return;
+            // retorno um array vazio:
+            return [];
         }
 
         console.log(`--- Turno: ${this.__turnoAtual} ---`);
@@ -189,11 +201,10 @@ export class Partida {
         this.iniciarTurno();
 
         /**
-         * Removi a capacidade de o modo automatico tomar decisões durante a partida.
-         * Futuramente a IA vai usar esse metodo para fazer as jogadas que quiser.
-         */
-        
-        this.passarTurno();
+        * Removi a capacidade de o modo automatico tomar decisões durante a partida.
+        * Futuramente a IA vai usar esse metodo para fazer as jogadas que quiser.
+        */
+        return this.passarTurno();
     }
 
     // Motores internos e completamente privados:
@@ -207,38 +218,59 @@ export class Partida {
         }
     }
 
-    // Antigo executarFasePrincipal. Foi descontinuado. Vou segurar ele aqui ainda por uns commits depois apago do codigo:
-    // private executarFasePrincipal(jogador: Jogador): void {
-        // Será descontinuado pois percebi que a maquina de estados que fiz é melhor do que simplemente usar um
-        // metodo para rodar a main phase do TCG.
-    //}
-
-    private executarFaseCombate(atacante: Jogador, defensor: Jogador): void {
-        for (const linha of ORDEM_DAS_LINHAS) {
-            for (const coluna of ORDEM_DAS_COLUNAS) {
+    private executarFaseCombate(atacante: Jogador, defensor: Jogador): TiposEventos[] {
+        // Crio aonde os eventos serão armazenados:
+        const eventos: TiposEventos[] = [];
+        // Inicio do loop:
+        for (const linha of ORDEM_DAS_LINHAS) { // Inicio do primeiro for.
+            for (const coluna of ORDEM_DAS_COLUNAS) { // Inicio do for concatenado.
+                // Pego quem será a criatura atacante:
                 const criaturaAtacante = atacante.tabuleiro.obterCriatura(linha, coluna);
-                
+                // Se criatura está no espaço e está viva:
                 if (criaturaAtacante != null && criaturaAtacante.estaVivo()) {
                     if (this.podeAtacar(criaturaAtacante, linha)) {
+                        // Reconhe o primeiro alvo:
                         const alvoEncontrado = this.encontrarAlvo(coluna, defensor);
-                        
+                        // Valida o alvo:
                         if (alvoEncontrado != null) {
-                            this.resolverCombate(criaturaAtacante, alvoEncontrado.criatura, alvoEncontrado.posicao, defensor);
+                            // Caso alvo seja valido guardo o resultado de resolver combate dentro de eventos:
+                            eventos.push(...this.resolverCombate(criaturaAtacante, alvoEncontrado.criatura, alvoEncontrado.posicao, defensor));
                         }
                         else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
+                            // Caso não haja mais criaturas no tabuleiro verifico se o jogador pode receber o ataque:
                             if (this.podeAtacarJogador()) {
                                 console.log(`${criaturaAtacante.nome} atacou o ${defensor.nome} DIRETAMENTE com ${criaturaAtacante.ataque} de dano!`);
                                 defensor.receberDano(criaturaAtacante.ataque);
+                                eventos.push({
+                                    tipo: "AtaqueDireto",
+                                    nomeAtacante: criaturaAtacante.nome,
+                                    nomeDefensor: defensor.nome,
+                                    danoCausado: criaturaAtacante.ataque,
+                                    vidaAposDano: defensor.vidaAtual
+                                });
                             } else {
                                 console.log(`${criaturaAtacante.nome} não pode atacar o jogador diretamente no Turno 1.`);
+                                // Guardo o evento do impedimento:
+                                eventos.push({
+                                    tipo: "AtaqueImpedido",
+                                    nomeCriatura: criaturaAtacante.nome,
+                                    motivo: "InvalidoTurno1"
+                                });
                             }
                         }
                     } else {
                         console.log(`${criaturaAtacante.nome} não pode atacar na linha: ${linha}`);
+                        // Guardo o evento do impedimento:
+                        eventos.push({
+                            tipo: "AtaqueImpedido",
+                            nomeCriatura: criaturaAtacante.nome,
+                            motivo: "LinhaInvalida"
+                        });
                     }
                 }
             }
         }
+        return eventos;
     }
 
     private executarFaseFinal(): void {
@@ -246,14 +278,33 @@ export class Partida {
     }
 
     // Auxiliares para o combate:
-    private resolverCombate(atacante: Criatura, alvo: Criatura, posicaoAlvo: Posicao, defensor: Jogador): void {
+    private resolverCombate(atacante: Criatura, alvo: Criatura, posicaoAlvo: Posicao, defensor: Jogador): TiposEventos[] {
+        
+        // Crio uma lista de eventos:
+        const eventos: TiposEventos[] = [];
         console.log(`${atacante.nome} ataca ${alvo.nome} com ${atacante.ataque} de dano!`);
         alvo.receberDano(atacante.ataque);
-        
+        // Após ataque bem sucedido dou uma guardada em eventos:
+        eventos.push({
+            tipo: "AtaqueCriatura",
+            nomeAtacante: atacante.nome,
+            nomeDefensor: alvo.nome,
+            danoCausado: atacante.ataque,
+            vidaAposDano: alvo.vida
+        });
+
+        // Caso alvo morra:
         if (!alvo.estaVivo()) {
-            console.log(`${alvo.nome} foi destruída!`);
-            defensor.tabuleiro.removerCriatura(posicaoAlvo.linha, posicaoAlvo.coluna);
+            console.log(`${alvo.nome} foi destruída!`); // Sairá em breve daqui.
+            defensor.tabuleiro.removerCriatura(posicaoAlvo.linha, posicaoAlvo.coluna); // Removo a criatura do tabuleiro.
+            // Guardo o evento da criatura destruida em eventos:
+            eventos.push ({
+                tipo: "CriaturaDestruida",
+                nomeCriatura: alvo.nome
+            });
         }
+        // Retorno os evento/eventos para serem consumidos pela UI:
+        return eventos;
     }
 
     private podeAtacarJogador(): boolean {
