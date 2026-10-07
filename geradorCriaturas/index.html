@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerador de criaturas</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10191d;color:#edeade;font:16px system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:48px 24px}.tag{color:#b6d78c;letter-spacing:3px;font-size:12px}h1{font-size:clamp(28px,5vw,46px);margin:12px 0}p{color:#a7b5b8;line-height:1.6}.controls{display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin:32px 0}label{display:grid;gap:8px;font-size:13px;color:#bec9c7}select,input,button{font:inherit;padding:12px;border-radius:8px;border:1px solid #405052;background:#1a292e;color:#fff}button{cursor:pointer;background:#c6e49b;color:#17221a;font-weight:650;border:0}button.secondary{background:#283a40;color:#eee}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:18px}.card{border:1px solid #43514b;border-radius:14px;padding:8px;background:#233033;overflow:hidden}.art{overflow:hidden;border-radius:9px;background:repeating-conic-gradient(#233033 0% 25%,#29383b 0% 50%) 0/20px 20px}.card h2{font-size:16px;margin:15px 6px 5px}.card p{font-size:12px;margin:0 6px 12px}.card button{width:100%;font-size:12px;padding:9px;background:#334549;color:#d6e4d8}code{color:#c6e49b}footer{margin-top:32px;font-size:13px;color:#9aaeb0}
+</style>
+<main>
+<div class="tag">ARTE FEITA POR CÓDIGO · V1</div><h1>Uma seed. Uma criatura.</h1>
+<p>Cinco famílias desenhadas com formas geométricas. Sem imagens externas, sem instalação e sem IA em execução.</p>
+<form class="controls" id="form">
+<label>Tipo<select id="tipo"><option>Todos</option><option>Humanos</option><option>Monstros</option><option>Alien</option><option>Mortos-Vivos</option><option>Animais</option></select></label>
+<label>Seed<input id="seed" value="primeira-colecao" maxlength="100"></label>
+<label>Fundo<select id="fundo"><option value="sim">Ilustrado</option><option value="nao">Transparente</option></select></label>
+<button>Gerar</button><button type="button" class="secondary" id="sortear">Nova seed</button>
+</form><section class="grid" id="galeria" aria-live="polite"></section>
+<footer>Use <code>gerarCriatura("Monstros")</code> no seu jogo. Para repetir uma arte, passe também <code>{ seed: "carta-42" }</code>. O SVG baixado contém apenas a arte, sem moldura ou texto de carta.</footer>
+</main>
+<script src="criaturas.js"></script>
+<script>
+const form = document.querySelector('#form');
+const tipo = document.querySelector('#tipo');
+const seed = document.querySelector('#seed');
+const fundo = document.querySelector('#fundo');
+function renderizar() {
+  const galeria = document.querySelector('#galeria');
+  galeria.replaceChildren();
+  const todos = tipo.value === 'Todos';
+  const lista = todos ? TIPOS : Array(5).fill(tipo.value);
+  lista.forEach((nome, i) => {
+    const opcoes = { seed: todos ? seed.value : seed.value + ':' + i, fundo: fundo.value === 'sim' };
+    const card = document.createElement('article'); card.className = 'card';
+    const art = document.createElement('div'); art.className = 'art';
+    art.append(gerarCriatura(nome, opcoes));
+    const titulo = document.createElement('h2'); titulo.textContent = nome;
+    const legenda = document.createElement('p'); legenda.textContent = 'Seed: ' + opcoes.seed;
+    const baixar = document.createElement('button'); baixar.textContent = 'Baixar SVG';
+    baixar.onclick = () => {
+      const url = URL.createObjectURL(new Blob([gerarSVG(nome, opcoes)], {type:'image/svg+xml'}));
+      const a = document.createElement('a'); a.href = url; a.download = 'criatura-' + i + '.svg';
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    card.append(art, titulo, legenda, baixar); galeria.append(card);
+  });
+}
+form.onsubmit = e => { e.preventDefault(); renderizar(); };
+document.querySelector('#sortear').onclick = () => { seed.value = Math.random().toString(36).slice(2,10); renderizar(); };
+tipo.onchange = renderizar; fundo.onchange = renderizar; renderizar();
+</script></html>
