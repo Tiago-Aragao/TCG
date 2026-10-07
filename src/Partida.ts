@@ -70,11 +70,9 @@ export class Partida {
         const participaDaPartida = jogador === this.jogador1 || jogador === this.jogador2;
 
         if (!participaDaPartida || this.estadoPartida !== "Abertura" || this.mulligansRealizados.has(jogador)) {
-            console.log(`Mulligan negado para ${jogador.nome}.`);
             return false;
         }
 
-        console.log(`${jogador.nome} realizou o Mulligan.`);
         jogador.fazerMulliganEuropeu();
 
         this.mulligansRealizados.add(jogador);
@@ -196,7 +194,6 @@ export class Partida {
             return [];
         }
 
-        console.log(`--- Turno: ${this.__turnoAtual} ---`);
         // Preparação + Compra:
         this.iniciarTurno();
 
@@ -239,7 +236,6 @@ export class Partida {
                         else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
                             // Caso não haja mais criaturas no tabuleiro verifico se o jogador pode receber o ataque:
                             if (this.podeAtacarJogador()) {
-                                console.log(`${criaturaAtacante.nome} atacou o ${defensor.nome} DIRETAMENTE com ${criaturaAtacante.ataque} de dano!`);
                                 defensor.receberDano(criaturaAtacante.ataque);
                                 eventos.push({
                                     tipo: "AtaqueDireto",
@@ -249,7 +245,6 @@ export class Partida {
                                     vidaAposDano: defensor.vidaAtual
                                 });
                             } else {
-                                console.log(`${criaturaAtacante.nome} não pode atacar o jogador diretamente no Turno 1.`);
                                 // Guardo o evento do impedimento:
                                 eventos.push({
                                     tipo: "AtaqueImpedido",
@@ -259,7 +254,6 @@ export class Partida {
                             }
                         }
                     } else {
-                        console.log(`${criaturaAtacante.nome} não pode atacar na linha: ${linha}`);
                         // Guardo o evento do impedimento:
                         eventos.push({
                             tipo: "AtaqueImpedido",
@@ -282,7 +276,6 @@ export class Partida {
         
         // Crio uma lista de eventos:
         const eventos: TiposEventos[] = [];
-        console.log(`${atacante.nome} ataca ${alvo.nome} com ${atacante.ataque} de dano!`);
         alvo.receberDano(atacante.ataque);
         // Após ataque bem sucedido dou uma guardada em eventos:
         eventos.push({
@@ -295,7 +288,6 @@ export class Partida {
 
         // Caso alvo morra:
         if (!alvo.estaVivo()) {
-            console.log(`${alvo.nome} foi destruída!`); // Sairá em breve daqui.
             defensor.tabuleiro.removerCriatura(posicaoAlvo.linha, posicaoAlvo.coluna); // Removo a criatura do tabuleiro.
             // Guardo o evento da criatura destruida em eventos:
             eventos.push ({
