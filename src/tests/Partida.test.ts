@@ -1470,5 +1470,379 @@ describe("Encerramento da partida", () => {
         expect(jogador2.vidaAtual).toBe(vidaAoEncerrar);
         expect(partida.estado).toBe("Encerrada");
     });
+    
+    describe("Eventos da partida", () => {
 
+    test("deve retornar EventoAtaqueCriatura quando uma criatura atacar outra criatura", () => {
+        const atacante = new Criatura(
+            "Guerreiro",
+            3,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const alvo = new Criatura(
+            "Alvo",
+            1,
+            10
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        jogador2.tabuleiro.conjurarCriatura(
+            alvo,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueCriatura",
+                nomeAtacante: "Guerreiro",
+                nomeDefensor: "Alvo",
+                danoCausado: 3,
+                vidaAposDano: 7
+            }
+        ]);
+    });
+
+
+    test("deve retornar AtaqueCriatura antes de CriaturaDestruida quando o ataque for letal", () => {
+        const atacante = new Criatura(
+            "Finalizador",
+            10,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const alvo = new Criatura(
+            "Alvo",
+            1,
+            5
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        jogador2.tabuleiro.conjurarCriatura(
+            alvo,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueCriatura",
+                nomeAtacante: "Finalizador",
+                nomeDefensor: "Alvo",
+                danoCausado: 10,
+                vidaAposDano: 0
+            },
+            {
+                tipo: "CriaturaDestruida",
+                nomeCriatura: "Alvo"
+            }
+        ]);
+    });
+
+
+    test("deve retornar AtaqueImpedido com motivo LinhaInvalida", () => {
+        const atacante = new Criatura(
+            "Guerreiro",
+            3,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const alvo = new Criatura(
+            "Alvo",
+            1,
+            10
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "fundo",
+            Coluna.Esquerda
+        );
+
+        jogador2.tabuleiro.conjurarCriatura(
+            alvo,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueImpedido",
+                nomeCriatura: "Guerreiro",
+                motivo: "LinhaInvalida"
+            }
+        ]);
+
+        expect(alvo.vida).toBe(10);
+    });
+
+
+    test("deve retornar AtaqueImpedido quando uma criatura tentar atacar diretamente no turno 1", () => {
+        const atacante = new Criatura(
+            "Guerreiro",
+            3,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueImpedido",
+                nomeCriatura: "Guerreiro",
+                motivo: "InvalidoTurno1"
+            }
+        ]);
+
+        expect(jogador2.vidaAtual).toBe(20);
+    });
+
+
+    test("deve retornar AtaqueDireto com a vida do defensor depois do dano", () => {
+        const atacante = new Criatura(
+            "Guerreiro",
+            3,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        // Turno 1 - ataque direto proibido
+        partida.executarProximoTurno();
+
+        // Turno 2 - Jogador 2
+        partida.executarProximoTurno();
+
+        // Turno 3 - ataque direto permitido
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueDireto",
+                nomeAtacante: "Guerreiro",
+                nomeDefensor: "Jogador 2",
+                danoCausado: 3,
+                vidaAposDano: 17
+            }
+        ]);
+
+        expect(jogador2.vidaAtual).toBe(17);
+    });
+
+
+    test("deve colocar PartidaEncerrada depois do ataque que derrotou o jogador", () => {
+        const atacante = new Criatura(
+            "Finalizador",
+            20,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.executarProximoTurno(); // Turno 1
+        partida.executarProximoTurno(); // Turno 2
+
+        const eventos = partida.executarProximoTurno(); // Turno 3
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueDireto",
+                nomeAtacante: "Finalizador",
+                nomeDefensor: "Jogador 2",
+                danoCausado: 20,
+                vidaAposDano: 0
+            },
+            {
+                tipo: "PartidaEncerrada",
+                vencedorNome: "Jogador 1",
+                derrotadoNome: "Jogador 2"
+            }
+        ]);
+
+        expect(partida.estado).toBe("Encerrada");
+    });
+
+
+    test("deve preservar a ordem de todos os ataques durante um overkill", () => {
+        const atacante1 = new Criatura(
+            "Atacante 1",
+            50,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const atacante2 = new Criatura(
+            "Atacante 2",
+            50,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const atacante3 = new Criatura(
+            "Atacante 3",
+            48,
+            10,
+            "corpo-a-corpo"
+        );
+
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante1,
+            "frente",
+            Coluna.Esquerda
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante2,
+            "frente",
+            Coluna.Meio
+        );
+
+        jogador1.tabuleiro.conjurarCriatura(
+            atacante3,
+            "frente",
+            Coluna.Direita
+        );
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.executarProximoTurno(); // Turno 1
+        partida.executarProximoTurno(); // Turno 2
+
+        const eventos = partida.executarProximoTurno(); // Turno 3
+
+        expect(eventos).toEqual([
+            {
+                tipo: "AtaqueDireto",
+                nomeAtacante: "Atacante 1",
+                nomeDefensor: "Jogador 2",
+                danoCausado: 50,
+                vidaAposDano: -30
+            },
+            {
+                tipo: "AtaqueDireto",
+                nomeAtacante: "Atacante 2",
+                nomeDefensor: "Jogador 2",
+                danoCausado: 50,
+                vidaAposDano: -80
+            },
+            {
+                tipo: "AtaqueDireto",
+                nomeAtacante: "Atacante 3",
+                nomeDefensor: "Jogador 2",
+                danoCausado: 48,
+                vidaAposDano: -128
+            },
+            {
+                tipo: "PartidaEncerrada",
+                vencedorNome: "Jogador 1",
+                derrotadoNome: "Jogador 2"
+            }
+        ]);
+
+        expect(jogador2.vidaAtual).toBe(-128);
+        expect(partida.estado).toBe("Encerrada");
+    });
+
+
+    test("passarTurno deve retornar array vazio quando não estiver na FasePrincipal", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const partida = new Partida(jogador1, jogador2);
+
+        const eventos = partida.passarTurno();
+
+        expect(eventos).toEqual([]);
+        expect(partida.estado).toBe("NaoIniciada");
+        expect(partida.turnoAtual).toBe(1);
+    });
+
+
+    test("executarProximoTurno deve retornar array vazio se uma FasePrincipal interativa já estiver aberta", () => {
+        const jogador1 = criarJogadorSemCartas("Jogador 1");
+        const jogador2 = criarJogadorSemCartas("Jogador 2");
+
+        const partida = new Partida(jogador1, jogador2);
+
+        partida.iniciarPartida();
+        partida.iniciarTurno();
+
+        const eventos = partida.executarProximoTurno();
+
+        expect(eventos).toEqual([]);
+        expect(partida.estado).toBe("FasePrincipal");
+        expect(partida.turnoAtual).toBe(1);
+    });
+
+});
 });
