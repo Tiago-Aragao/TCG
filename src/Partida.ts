@@ -1,9 +1,10 @@
+import { Carta } from "./Carta";
 import { Jogador } from "./Jogador";
 import { Criatura } from "./Criatura";
 import { CartaCriatura } from "./CartaCriatura";
 import { TiposEventos } from "./tiposEventos";
 import { Linha, Coluna, Posicao } from "./Tabuleiro";
-import { ResultadoTentarJogarCarta } from "./tiposResultados";
+import { ResultadoTentarJogarCarta, ResultadoTentarSacrificio } from "./tiposResultados";
 
 const ORDEM_DAS_LINHAS: Linha[] = ["frente", "fundo"] as const;
 const ORDEM_DAS_COLUNAS: Coluna[] = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita] as const;
@@ -28,6 +29,7 @@ export class Partida {
     private __turnoAtual: number;
     
     private estadoPartida: EstadoDaPartida = "NaoIniciada";
+    private jaSacrificouEsteTurno: boolean = false;
     private mulligansRealizados: Set<Jogador> = new Set();
     
     // Construtor da Classe:
@@ -94,17 +96,17 @@ export class Partida {
         const jogadorAtivo = this.obterJogadorAtivo();
         // Gero mana:
         this.executarFasePreparacao(jogadorAtivo); // chama o jogador.gerarManaTurno
-        this.executarFaseCompra(jogadorAtivo);
+        this.executarFaseCompra(jogadorAtivo); // Compro carta.
+        this.jaSacrificouEsteTurno = false; // Reseto o sacrifico do turno.
         // Iniciando a fase principal:
         this.estadoPartida = "FasePrincipal";
     }
 
     public tentarJogarCarta(cartaEscolhida: CartaCriatura, posicao: Posicao): ResultadoTentarJogarCarta {
         /**
-         * Só pode ocorrer na fasePrincipal.
+         * Só pode ocorrer na FasePrincipal.
          * Deve permitir diversas chamadas para o Jogador jogar quantas cartas quiser e tiver mana para jogar.
-         * Por enquanto retorna um bool mas posteriormente vai retornar um type criado por mim exclusivo para o tratamento de erro
-        adequado.
+         * retorna um ResultadoTentarJogarCarta para tratamento adequado.
          */
         // Verifico que só pode funcionar na FasePrincipal:
         if (this.estadoPartida !== "FasePrincipal") {
@@ -121,6 +123,54 @@ export class Partida {
         }
         const jogadorAtivo = this.obterJogadorAtivo();
         return jogadorAtivo.jogarCartaMao(cartaEscolhida, posicao);
+    }
+
+    public tentarSacrificarCartaMao(cartaEscolhida: Carta): ResultadoTentarSacrificio {
+        /**
+         * Só pode ocorrer na FasePrincipal
+         * Só pode ocorrer uma vez a cada turno
+         * Retorna um ResultadoTentarSacrificio para tratamento adequado.
+         */
+        // Verifico se está na FasePrincipal:
+        if (this.estadoPartida !== "FasePrincipal") {
+            return "ForaDaFasePrincipal";
+        }
+        // Verifico se o sacrifico já ocorreu:
+        if (this.jaSacrificouEsteTurno) {
+            return "SacrificioJaRealizado";
+        }
+        // Agora se os testes passaram pego qual é o jogador:
+        const jogador = this.obterJogadorAtivo();
+        // Executo o metodo tentando sacrificar a carta da mão:
+        if (!jogador.sacrificarCartaMao(cartaEscolhida)) {
+            return "CartaNaoEstaNaMao";
+        }
+        // Confirmo que o sacrificio já foi feito:
+        this.jaSacrificouEsteTurno = true;
+        return "Sucesso"; // encerro retornando sucess.
+    }
+
+    public tentarSacrificarCriaturaCampo(posicao: Posicao): ResultadoTentarSacrificio {
+        /**
+         * Só pode ocorrer na FasePrincipal
+         * Só pode ocorrer uma vez a cada turno
+         * Retorna um ResultadoTentarSacrificio para tratamento adequado.
+        */
+        // Verifico se está na FasePrincipal:
+        if (this.estadoPartida !== "FasePrincipal") {
+            return "ForaDaFasePrincipal";
+        }
+        // Verifico se o sacrifico já ocorreu:
+        if (this.jaSacrificouEsteTurno) {
+            return "SacrificioJaRealizado";
+        }
+        const jogador = this.obterJogadorAtivo();
+        if (!jogador.sacrificarCriaturaCampo(posicao)) {
+            return "CriaturaNaoEncontrada";
+        }
+        // Confirmo que o sacrificio já foi feito:
+        this.jaSacrificouEsteTurno = true;
+        return "Sucesso"; // encerro retornando sucesso.
     }
 
     public passarTurno(): TiposEventos[] {
@@ -337,4 +387,6 @@ export class Partida {
             default: return false;
         }
     }
+
+
 }
