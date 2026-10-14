@@ -359,3 +359,201 @@ describe("Jogar carta da mão", () => {
     });
 
 });
+
+describe("Sacrifício", () => {
+
+    test("deve sacrificar uma carta criatura da mão e gerar 2 de mana", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador", deck);
+
+        const carta = new CartaCriatura(
+            1,
+            "Criatura Sacrificável",
+            1,
+            2,
+            2
+        );
+
+        jogador.mao.push(carta);
+
+        jogador.gerarManaTurno(1);
+
+        expect(jogador.mostrarMana).toBe(1);
+        expect(jogador.mao).toContain(carta);
+
+        const resultado =
+            jogador.sacrificarCartaMao(carta);
+
+        expect(resultado).toBe(true);
+
+        expect(jogador.mao).not.toContain(carta);
+
+        expect(jogador.mostrarMana).toBe(3);
+    });
+
+
+    test("não deve gerar mana ao tentar sacrificar uma carta que não está na mão", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador", deck);
+
+        const cartaNaMao = new CartaCriatura(
+            1,
+            "Carta na mão",
+            1,
+            2,
+            2
+        );
+
+        const cartaForaDaMao = new CartaCriatura(
+            2,
+            "Carta fora da mão",
+            1,
+            2,
+            2
+        );
+
+        jogador.mao.push(cartaNaMao);
+
+        jogador.gerarManaTurno(1);
+
+        const manaAntes =
+            jogador.mostrarMana;
+
+        const resultado =
+            jogador.sacrificarCartaMao(
+                cartaForaDaMao
+            );
+
+        expect(resultado).toBe(false);
+
+        expect(jogador.mostrarMana).toBe(
+            manaAntes
+        );
+
+        expect(jogador.mao).toContain(
+            cartaNaMao
+        );
+
+        expect(jogador.mao).not.toContain(
+            cartaForaDaMao
+        );
+    });
+
+
+    test("deve sacrificar uma criatura do campo e gerar 1 de mana", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador", deck);
+
+        const carta = new CartaCriatura(
+            1,
+            "Criatura Sacrificável",
+            1,
+            2,
+            2
+        );
+
+        const criatura =
+            carta.criarCriatura();
+
+        jogador.tabuleiro.conjurarCriatura(
+            criatura,
+            "frente",
+            Coluna.Meio
+        );
+
+        jogador.gerarManaTurno(1);
+
+        expect(jogador.mostrarMana).toBe(1);
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).toBe(criatura);
+
+        const resultado =
+            jogador.sacrificarCriaturaCampo({
+                linha: "frente",
+                coluna: Coluna.Meio
+            });
+
+        expect(resultado).toBe(true);
+
+        expect(jogador.mostrarMana).toBe(2);
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Meio
+            )
+        ).toBeNull();
+    });
+
+
+    test("não deve gerar mana ao tentar sacrificar uma posição vazia", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador", deck);
+
+        jogador.gerarManaTurno(1);
+
+        const manaAntes =
+            jogador.mostrarMana;
+
+        const resultado =
+            jogador.sacrificarCriaturaCampo({
+                linha: "frente",
+                coluna: Coluna.Esquerda
+            });
+
+        expect(resultado).toBe(false);
+
+        expect(jogador.mostrarMana).toBe(
+            manaAntes
+        );
+
+        expect(
+            jogador.tabuleiro.obterCriatura(
+                "frente",
+                Coluna.Esquerda
+            )
+        ).toBeNull();
+    });
+
+
+    test("mana adicional do sacrifício deve poder ultrapassar 6", () => {
+        const deck = new Deck("Deck Teste");
+        const jogador = new Jogador("Jogador", deck);
+
+        const carta = new CartaCriatura(
+            1,
+            "Criatura Sacrificável",
+            1,
+            2,
+            2
+        );
+
+        jogador.mao.push(carta);
+
+        /*
+         * Turno 11 gera automaticamente 6 de mana.
+         */
+        jogador.gerarManaTurno(11);
+
+        expect(jogador.mostrarMana).toBe(6);
+
+        const resultado =
+            jogador.sacrificarCartaMao(carta);
+
+        expect(resultado).toBe(true);
+
+        /*
+         * 6 automáticos + 2 do sacrifício.
+         *
+         * Isso protege nossa regra:
+         * 6 NÃO é limite global de mana.
+         */
+        expect(jogador.mostrarMana).toBe(8);
+    });
+
+});
