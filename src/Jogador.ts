@@ -44,6 +44,11 @@ export class Jogador {
         this.mana -= custo;
         return true; // consegui gastar a mana amigos.
     }
+
+    private gerarManaAdicional(manaAdicional: number): void {
+        this.mana += manaAdicional;
+    }
+
     // Operação de consulta que será "auxiliar" do jogarCarta:
     public possuiManaSuficiente(custo: number): boolean {
         /**
@@ -114,6 +119,33 @@ export class Jogador {
     public estaVivo(): boolean {
         return this.vidaAtual > 0;
     }
-    
 
+    // Sistema de geração de mana não convencional:
+    public sacrificarCartaMao(carta: Carta): boolean {
+        // Acho o indice da carta:
+        const indiceCarta = this.mao.findIndex(enderecoCarta => enderecoCarta === carta);
+        // Vejo se encontrou:
+        if (indiceCarta === -1) {
+            return false; // Carta Não Encontrada (Não está na mão).
+        }
+        const manaGerada = (carta.tipoCarta === 'Criatura')? 2:1; // Gera dois se for uma criatura e um se for qualquer outra.
+        // Removendo carta da mão:
+        this.mao.splice(indiceCarta, 1);
+        // Gerando mana:
+        this.gerarManaAdicional(manaGerada);
+        // Sucesso:
+        return true;
+    }
+
+    public sacrificarCriaturaCampo(posicao: Posicao): boolean {
+        // Verifico se tem uma criatura e guardo na posição:
+        const criatura = this.tabuleiro.obterCriatura(posicao.linha, posicao.coluna);
+        // Caso não tenha criatura:
+        if (criatura === null) {
+            return false;
+        }
+        this.tabuleiro.removerCriatura(posicao.linha, posicao.coluna);
+        this.gerarManaAdicional(1);
+        return true;
+    }
 }
