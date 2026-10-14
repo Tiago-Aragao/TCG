@@ -15,3 +15,11 @@ export type ResultadoTentarJogarCarta =
     | ResultadoJogarCartaMao // Herdo a resposta do type que usarei em Jogador assim a partida consome corretamente a resposta.
     | "ForaDaFasePrincipal"
 ;
+
+export type ResultadoTentarSacrificio =
+    | "Sucesso"
+    | "ForaDaFasePrincipal"
+    | "SacrificioJaRealizado"
+    | "CartaNaoEstaNaMao"
+    | "CriaturaNaoEncontrada"
+;
