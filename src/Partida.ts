@@ -275,13 +275,15 @@ export class Partida {
                 const criaturaAtacante = atacante.tabuleiro.obterCriatura(linha, coluna);
                 // Se criatura está no espaço e está viva:
                 if (criaturaAtacante != null && criaturaAtacante.estaVivo()) {
+                    // Pego a posição do atacante:
+                    const posicaoAtacante: Posicao = {linha, coluna}
                     if (this.podeAtacar(criaturaAtacante, linha)) {
                         // Reconhe o primeiro alvo:
                         const alvoEncontrado = this.encontrarAlvo(coluna, defensor);
                         // Valida o alvo:
                         if (alvoEncontrado != null) {
                             // Caso alvo seja valido guardo o resultado de resolver combate dentro de eventos:
-                            eventos.push(...this.resolverCombate(criaturaAtacante, alvoEncontrado.criatura, alvoEncontrado.posicao, defensor));
+                            eventos.push(...this.resolverCombate(criaturaAtacante, posicaoAtacante, alvoEncontrado.criatura, alvoEncontrado.posicao, defensor));
                         }
                         else if (!defensor.tabuleiro.possuiCriaturasNoTabuleiro()) {
                             // Caso não haja mais criaturas no tabuleiro verifico se o jogador pode receber o ataque:
@@ -290,6 +292,7 @@ export class Partida {
                                 eventos.push({
                                     tipo: "AtaqueDireto",
                                     nomeAtacante: criaturaAtacante.nome,
+                                    posicaoAtacante: posicaoAtacante,
                                     nomeDefensor: defensor.nome,
                                     danoCausado: criaturaAtacante.ataque,
                                     vidaAposDano: defensor.vidaAtual
@@ -299,6 +302,7 @@ export class Partida {
                                 eventos.push({
                                     tipo: "AtaqueImpedido",
                                     nomeCriatura: criaturaAtacante.nome,
+                                    posicaoAtacante: posicaoAtacante,
                                     motivo: "InvalidoTurno1"
                                 });
                             }
@@ -308,6 +312,7 @@ export class Partida {
                         eventos.push({
                             tipo: "AtaqueImpedido",
                             nomeCriatura: criaturaAtacante.nome,
+                            posicaoAtacante: posicaoAtacante,
                             motivo: "LinhaInvalida"
                         });
                     }
@@ -322,16 +327,19 @@ export class Partida {
     }
 
     // Auxiliares para o combate:
-    private resolverCombate(atacante: Criatura, alvo: Criatura, posicaoAlvo: Posicao, defensor: Jogador): TiposEventos[] {
+    private resolverCombate(atacante: Criatura, posicaoAtacante:Posicao, alvo: Criatura, posicaoAlvo: Posicao, defensor: Jogador): TiposEventos[] {
         
         // Crio uma lista de eventos:
         const eventos: TiposEventos[] = [];
+        // Faço o alvo receber o dano:
         alvo.receberDano(atacante.ataque);
         // Após ataque bem sucedido dou uma guardada em eventos:
         eventos.push({
             tipo: "AtaqueCriatura",
             nomeAtacante: atacante.nome,
+            posicaoAtacante: posicaoAtacante,
             nomeDefensor: alvo.nome,
+            posicaoDefensor: posicaoAlvo,
             danoCausado: atacante.ataque,
             vidaAposDano: alvo.vida
         });
@@ -342,7 +350,8 @@ export class Partida {
             // Guardo o evento da criatura destruida em eventos:
             eventos.push ({
                 tipo: "CriaturaDestruida",
-                nomeCriatura: alvo.nome
+                nomeCriatura: alvo.nome,
+                posicaoCriatura: posicaoAlvo
             });
         }
         // Retorno os evento/eventos para serem consumidos pela UI:
