@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forja Procedural de Cartas · Estúdio TCG</title>
+  <style>
+    :root {
+      --bg-deep: #070a0f;
+      --bg-panel: #111822;
+      --bg-card: #161f2c;
+      --border-subtle: #263547;
+      --accent-gold: #f0b849;
+      --accent-cyan: #38e5ff;
+      --accent-green: #b6e378;
+      --text-main: #f2f5f8;
+      --text-muted: #94a6b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(56, 229, 255, 0.08), transparent 40%),
+        radial-gradient(circle at 85% 15%, rgba(240, 184, 73, 0.08), transparent 45%),
+        linear-gradient(180deg, #06090e 0%, #0b1118 100%);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      overflow-x: hidden;
+    }
+
+    main {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 36px 24px 64px;
+    }
+
+    /* Cabeçalho do Estúdio */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .badge-topo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(240, 184, 73, 0.12);
+      border: 1px solid rgba(240, 184, 73, 0.35);
+      color: var(--accent-gold);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      margin: 10px 0 6px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #ffffff, #d9e6f2, var(--accent-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitulo {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 680px;
+      line-height: 1.5;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      background: var(--bg-panel);
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .stats-bar strong {
+      color: var(--accent-gold);
+      font-size: 16px;
+      display: block;
+    }
+
+    /* Painel de Controles */
+    .painel-controles {
+      margin: 28px 0 32px;
+      padding: 20px;
+      border-radius: 16px;
+      background: rgba(17, 24, 34, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      align-items: end;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+
+    select, input, button {
+      font: inherit;
+      font-size: 14px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid #2e4057;
+      background: #0c121a;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 0 3px rgba(240, 184, 73, 0.18);
+    }
+
+    .acoes-botoes {
+      display: flex;
+      gap: 10px;
+      grid-column: span 2;
+    }
+    @media (max-width: 640px) {
+      .acoes-botoes { grid-column: span 1; flex-direction: column; }
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+    }
+
+    button.btn-primario {
+      flex: 1;
+      background: linear-gradient(135deg, #f5c963, #d99326);
+      color: #120d04;
+      box-shadow: 0 4px 15px rgba(240, 184, 73, 0.25);
+    }
+    button.btn-primario:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    button.btn-secundario {
+      flex: 1;
+      background: #1d2a3a;
+      color: var(--text-main);
+      border: 1px solid #334863;
+    }
+    button.btn-secundario:hover {
+      background: #27384d;
+      border-color: var(--accent-cyan);
+    }
+
+    /* Grade de Cartas */
+    .galeria {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+      gap: 26px;
+      perspective: 1200px;
+    }
+
+    /* Estrutura da Carta TCG com Inclinação 3D e Raridades */
+    .tcg-card {
+      position: relative;
+      border-radius: 16px;
+      padding: 12px;
+      background: linear-gradient(160deg, #1e2938 0%, #0f151e 100%);
+      border: 2px solid #35475e;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55);
+      transition: transform 0.15s ease-out, box-shadow 0.2s ease, border-color 0.2s ease;
+      transform-style: preserve-3d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .tcg-card:hover {
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.75);
+      z-index: 2;
+    }
+
+    /* Raridades da Moldura */
+    .tcg-card[data-raridade="Rara"] {
+      border-color: #3b9eff;
+      box-shadow: 0 10px 30px rgba(59, 158, 255, 0.18);
+    }
+    .tcg-card[data-raridade="Épica"] {
+      border-color: #b54cff;
+      box-shadow: 0 10px 32px rgba(181, 76, 255, 0.22);
+    }
+    .tcg-card[data-raridade="Lendária"] {
+      border-color: #f5c249;
+      background: linear-gradient(160deg, #2b2212 0%, #12161f 55%, #261b0c 100%);
+      box-shadow: 0 12px 36px rgba(245, 194, 73, 0.28);
+    }
+
+    /* Reflexo Holográfico Foil */
+    .foil-glare {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.18), transparent 55%);
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 5;
+      mix-blend-mode: screen;
+    }
+    .tcg-card:hover .foil-glare { opacity: 1; }
+
+    /* Topo da Carta (Nome + Custo de Mana) */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      background: rgba(8, 12, 18, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mana-cost {
+      min-width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #5ee7ff, #0c588c);
+      border: 1.5px solid #aeefff;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(56, 229, 255, 0.4);
+    }
+
+    /* Moldura da Arte */
+    .art-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid #2b394a;
+      cursor: zoom-in;
+      background:
+        repeating-conic-gradient(#141c24 0% 25%, #1b2530 0% 50%) 0 / 20px 20px;
+    }
+
+    .tcg-card[data-raridade="Lendária"] .art-frame { border-color: #d9a032; }
+
+    /* Barra de Tipo e Raridade */
+    .card-type-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(10, 15, 22, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #cad6e2;
+    }
+
+    .gem-raridade {
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 10px;
+      background: #2b3847;
+      color: #fff;
+    }
+    .tcg-card[data-raridade="Rara"] .gem-raridade { background: #175db3; }
+    .tcg-card[data-raridade="Épica"] .gem-raridade { background: #6f22ab; }
+    .tcg-card[data-raridade="Lendária"] .gem-raridade { background: #b87b14; color: #000; }
+
+    /* Caixa de Lore e Atributos (ATK / DEF) */
+    .card-lore {
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(7, 10, 15, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 11.5px;
+      font-style: italic;
+      color: #9cb0c4;
+      line-height: 1.4;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+    }
+
+    .card-stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .seed-badge {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 3px 7px;
+      border-radius: 5px;
+    }
+
+    .atk-def {
+      display: flex;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .stat-atk {
+      background: rgba(224, 58, 58, 0.2);
+      border: 1px solid rgba(224, 58, 58, 0.5);
+      color: #ff8585;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .stat-def {
+      background: rgba(58, 155, 224, 0.2);
+      border: 1px solid rgba(58, 155, 224, 0.5);
+      color: #85caff;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* Botões de Ação da Carta */
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .card-actions button {
+      padding: 8px;
+      font-size: 11.5px;
+      border-radius: 7px;
+      background: #1f2c3d;
+      color: #d6e4f0;
+      border: 1px solid #2f4259;
+    }
+    .card-actions button:hover {
+      background: #2c3f57;
+      border-color: var(--accent-gold);
+      color: #fff;
+    }
+
+    /* Modo Apenas Arte Pura (Oculta textos de RPG da moldura) */
+    body.modo-arte-pura .card-header,
+    body.modo-arte-pura .card-lore,
+    body.modo-arte-pura .atk-def {
+      display: none;
+    }
+
+    /* Modal de Inspeção em Alta Definição */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 12, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .modal-backdrop.ativo { display: flex; }
+
+    .modal-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      max-width: 520px;
+      width: 100%;
+      padding: 20px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-art {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid var(--accent-gold);
+      margin-bottom: 16px;
+      background: repeating-conic-gradient(#141c24 0% 25%, #1b2530 0% 50%) 0 / 20px 20px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .modal-header h3 { margin: 0; font-size: 20px; }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    code {
+      color: var(--accent-gold);
+      background: rgba(240, 184, 73, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span class="badge-topo">⚡ MOTOR PROCEDURAL DE CENAS · SEM IA</span>
+        <h1>Forja de Cartas & Criaturas</h1>
+        <p class="subtitulo">
+          Geração determinística de ilustrações para TCG com iluminação direcional (Rim-Light),
+          soldagem de silhueta em nanquim e dezenas de arquétipos.
+        </p>
+      </div>
+      <div class="stats-bar">
+        <div><strong id="contador-subtipos">50+</strong>Arquétipos</div>
+        <div><strong id="contador-cartas">10</strong>Em exibição</div>
+      </div>
+    </header>
+
+    <form class="painel-controles" id="form-controles">
+      <label>
+        Família
+        <select id="familia">
+          <option value="Todos">Todas as Famílias</option>
+          <option value="Catalogo">Catálogo Completo (1 de cada)</option>
+          <option value="Humanos">Humanos</option>
+          <option value="Monstros">Monstros</option>
+          <option value="Alien">Aliens & Mechas</option>
+          <option value="Mortos-Vivos">Mortos-Vivos</option>
+          <option value="Animais">Animais Selvagens</option>
+        </select>
+      </label>
+
+      <label>
+        Subtipo Específico
+        <select id="subtipo">
+          <option value="">Sorteio Procedural</option>
+        </select>
+      </label>
+
+      <label>
+        Seed da Coleção
+        <input id="seed" value="forja-arcana-01" maxlength="80" placeholder="Digite qualquer seed...">
+      </label>
+
+      <label>
+        Quantidade
+        <select id="quantidade">
+          <option value="5">5 Cartas</option>
+          <option value="10" selected>10 Cartas</option>
+          <option value="15">15 Cartas</option>
+          <option value="25">25 Cartas</option>
+        </select>
+      </label>
+
+      <label>
+        Cenário de Fundo
+        <select id="fundo">
+          <option value="sim">Cenário Ilustrado</option>
+          <option value="nao">Fundo Transparente</option>
+        </select>
+      </label>
+
+      <label>
+        Visualização
+        <select id="modo-visao">
+          <option value="tcg">Moldura TCG Completa</option>
+          <option value="pura">Apenas Arte Pura</option>
+        </select>
+      </label>
+
+      <div class="acoes-botoes">
+        <button type="submit" class="btn-primario">Gerar Coleção</button>
+        <button type="button" class="btn-secundario" id="btn-sortear">🎲 Nova Seed Aleatória</button>
+      </div>
+    </form>
+
+    <section class="galeria" id="galeria" aria-live="polite"></section>
+
+    <footer>
+      <div>
+        Chame <code>gerarCriatura("dragao", { seed: "carta-01" })</code> ou <code>gerarCriatura("lobo")</code> diretamente no seu jogo.
+      </div>
+      <div>
+        Os botões <strong>PNG</strong> e <strong>SVG</strong> exportam apenas a ilustração limpa (320×320), pronta para uso.
+      </div>
+    </footer>
+  </main>
+
+  <!-- Modal para inspecionar a arte em tamanho grande -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-titulo">Criatura</h3>
+          <span class="seed-badge" id="modal-seed"></span>
+        </div>
+        <button type="button" class="btn-secundario" id="modal-fechar" style="flex:0;padding:8px 14px">✕</button>
+      </div>
+      <div class="modal-art" id="modal-art"></div>
+      <div class="card-actions">
+        <button type="button" id="modal-variar">🔄 Outra Seed deste Tipo</button>
+        <button type="button" id="modal-png">⬇ Baixar PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="criaturas.js"></script>
+  <script>
+    const elFamilia = document.querySelector('#familia');
+    const elSubtipo = document.querySelector('#subtipo');
+    const elSeed = document.querySelector('#seed');
+    const elQuantidade = document.querySelector('#quantidade');
+    const elFundo = document.querySelector('#fundo');
+    const elModoVisao = document.querySelector('#modo-visao');
+    const elGaleria = document.querySelector('#galeria');
+
+    // Mapa seguro caso SUBTIPOS exista no criaturas.js
+    const mapaSubtipos = (typeof SUBTIPOS !== 'undefined') ? SUBTIPOS : {
+      0: ['guerreiro', 'mago', 'arqueiro', 'barbaro'],
+      1: ['dragao', 'orc', 'minotauro', 'slime'],
+      2: ['robo', 'cosmico', 'tecnologico'],
+      3: ['vampiro', 'dragao-zumbi', 'fantasma', 'lich'],
+      4: ['lobo', 'cachorro', 'urso', 'tigre', 'aguia', 'touro']
+    };
+
+    const todosSubtipos = Object.values(mapaSubtipos).flat();
+    document.querySelector('#contador-subtipos').textContent = todosSubtipos.length;
+
+    // Gerador determinístico auxiliar para criar Nomes, Atributos e Raridades da Moldura TCG
+    function hashSeed(str) {
+      let h = 2166136261;
+      for (const c of String(str)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+      return () => {
+        h += 0x6D2B79F5;
+        let t = Math.imul(h ^ (h >>> 15), 1 | h);
+        t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    const EPITETOS = {
+      Humanos: ['da Aurora', 'do Bastião', 'Juramentado', 'das Cinzas', 'da Lâmina Real', 'do Véu Arcano'],
+      Monstros: ['Quebra-Mundos', 'Abissal', 'da Cratera', 'Voraz', 'Sangue-Fervido', 'Colossal'],
+      Alien: ['de Órion', 'Cibernético', 'do Vazio Astral', 'Quântico', 'Protocolo Omega', 'Xenomorfo'],
+      'Mortos-Vivos': ['do Sepulcro', 'Desperto', 'da Noite Eterna', 'Amaldiçoado', 'Carniçal', 'Fogo-Fátuo'],
+      Animais: ['da Floresta Antiga', 'Alfa da Alcateia', 'Presa-Branca', 'do Pico Gelado', 'Espreitador', 'Selvagem']
+    };
+
+    const LORES = [
+      '"Poucos sobrevivem para descrever sua silhueta contra a luz da batalha."',
+      '"Quando o chão estremece e o ar esfria, já é tarde demais para recuar."',
+      '"Forjado no caos primordial, não conhece mestre nem piedade."',
+      '"Até os veteranos mais experientes hesitam diante do seu chamado."',
+      '"Sua presença altera o fluxo da partida no instante em que entra em campo."'
+    ];
+
+    function capitalizar(texto) {
+      return String(texto).replace(/(^|-)([a-z])/g, (_, sep, l) => (sep ? ' ' : '') + l.toUpperCase());
+    }
+
+    function gerarMetadadosCarta(chaveTipo, seedCarta) {
+      const rnd = hashSeed(chaveTipo + ':' + seedCarta);
+      const int = (a, b) => Math.floor(a + rnd() * (b - a + 1));
+
+      // Descobre a família principal
+      let familiaNome = TIPOS.includes(chaveTipo) ? chaveTipo : 'Monstros';
+      Object.entries(mapaSubtipos).forEach(([idFam, lista]) => {
+        if (lista.includes(chaveTipo.toLowerCase())) familiaNome = TIPOS[Number(idFam)];
+      });
+
+      const subNome = TIPOS.includes(chaveTipo)
+        ? mapaSubtipos[TIPOS.indexOf(chaveTipo)][int(0, mapaSubtipos[TIPOS.indexOf(chaveTipo)].length - 1)]
+        : chaveTipo;
+
+      const listaEpitetos = EPITETOS[familiaNome] || EPITETOS.Monstros;
+      const nome = `${capitalizar(subNome)} ${listaEpitetos[int(0, listaEpitetos.length - 1)]}`;
+
+      const rolarRaridade = rnd();
+      const raridade = rolarRaridade > 0.88 ? 'Lendária' : rolarRaridade > 0.65 ? 'Épica' : rolarRaridade > 0.35 ? 'Rara' : 'Comum';
+      const bonus = raridade === 'Lendária' ? 4 : raridade === 'Épica' ? 2 : raridade === 'Rara' ? 1 : 0;
+
+      const mana = Math.min(10, int(1, 6) + Math.floor(bonus * 0.8));
+      const atk = (int(1, 6) + bonus) * 100 + int(0, 9) * 10;
+      const def = (int(1, 6) + bonus) * 100 + int(0, 9) * 10;
+      const lore = LORES[int(0, LORES.length - 1)];
+
+      return { nome, familiaNome, subNome: capitalizar(subNome), raridade, mana, atk, def, lore };
+    }
+
+    // Atualiza o <select> de subtipos quando a família muda
+    function atualizarMenuSubtipos() {
+      const val = elFamilia.value;
+      elSubtipo.replaceChildren();
+      const optPadrao = document.createElement('option');
+      optPadrao.value = '';
+      optPadrao.textContent = 'Sorteio Procedural';
+      elSubtipo.append(optPadrao);
+
+      let lista = [];
+      if (val === 'Todos' || val === 'Catalogo') {
+        lista = todosSubtipos;
+      } else {
+        const idx = TIPOS.indexOf(val);
+        if (idx !== -1 && mapaSubtipos[idx]) lista = mapaSubtipos[idx];
+      }
+
+      lista.forEach(sub => {
+        const opt = document.createElement('option');
+        opt.value = sub;
+        opt.textContent = capitalizar(sub);
+        elSubtipo.append(opt);
+      });
+    }
+
+    function baixarArquivo(url, nomeArquivo) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo;
+      document.body.append(a);
+      a.click();
+      a.remove();
+    }
+
+    // Modal de inspeção
+    const modal = document.querySelector('#modal');
+    function abrirModal(chave, opcoes, meta) {
+      document.querySelector('#modal-titulo').textContent = meta.nome;
+      document.querySelector('#modal-seed').textContent = `Tipo: ${meta.subNome} · Seed: ${opcoes.seed}`;
+      const container = document.querySelector('#modal-art');
+      container.replaceChildren(gerarCriatura(chave, opcoes));
+      modal.classList.add('ativo');
+
+      document.querySelector('#modal-variar').onclick = () => {
+        const novaOpcao = { ...opcoes, seed: Math.random().toString(36).slice(2, 9) };
+        const novoMeta = gerarMetadadosCarta(chave, novaOpcao.seed);
+        abrirModal(chave, novaOpcao, novoMeta);
+      };
+
+      document.querySelector('#modal-png').onclick = () => {
+        const img = container.querySelector('img');
+        baixarArquivo(img.src, `${meta.subNome.toLowerCase()}-${opcoes.seed}.png`);
+      };
+    }
+
+    document.querySelector('#modal-fechar').onclick = () => modal.classList.remove('ativo');
+    modal.onclick = e => { if (e.target === modal) modal.classList.remove('ativo'); };
+
+    // Renderização principal da galeria
+    function renderizarGaleria() {
+      document.body.classList.toggle('modo-arte-pura', elModoVisao.value === 'pura');
+      elGaleria.replaceChildren();
+
+      const fam = elFamilia.value;
+      const subEscolhido = elSubtipo.value;
+      const qtd = Number(elQuantidade.value);
+      const usarFundo = elFundo.value === 'sim';
+
+      let filaGeracao = [];
+      if (subEscolhido) {
+        filaGeracao = Array(qtd).fill(subEscolhido);
+      } else if (fam === 'Catalogo') {
+        filaGeracao = todosSubtipos;
+      } else if (fam === 'Todos') {
+        for (let i = 0; i < qtd; i++) filaGeracao.push(TIPOS[i % TIPOS.length]);
+      } else {
+        filaGeracao = Array(qtd).fill(fam);
+      }
+
+      document.querySelector('#contador-cartas').textContent = filaGeracao.length;
+
+      filaGeracao.forEach((chave, i) => {
+        const opcoes = {
+          seed: `${elSeed.value.trim() || 'seed'}-${i + 1}`,
+          fundo: usarFundo
+        };
+        const meta = gerarMetadadosCarta(chave, opcoes.seed);
+
+        const card = document.createElement('article');
+        card.className = 'tcg-card';
+        card.dataset.raridade = meta.raridade;
+
+        // Efeito de inclinação 3D suave no hover
+        card.addEventListener('mousemove', e => {
+          const r = card.getBoundingClientRect();
+          const x = e.clientX - r.left;
+          const y = e.clientY - r.top;
+          const rotY = ((x / r.width) - 0.5) * 12;
+          const rotX = (0.5 - (y / r.height)) * 12;
+          card.style.transform = `perspective(900px) rotateX(${rotX.toFixed(1)}deg) rotateY(${rotY.toFixed(1)}deg) translateY(-4px)`;
+          card.style.setProperty('--mx', `${(x / r.width) * 100}%`);
+          card.style.setProperty('--my', `${(y / r.height) * 100}%`);
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+        });
+
+        const imgElemento = gerarCriatura(chave, opcoes);
+
+        card.innerHTML = `
+          <div class="foil-glare"></div>
+          <div class="card-header">
+            <span class="card-title" title="${meta.nome}">${meta.nome}</span>
+            <span class="mana-cost" title="Custo de Mana">${meta.mana}</span>
+          </div>
+          <div class="art-frame" title="Clique para ampliar"></div>
+          <div class="card-type-bar">
+            <span>${meta.familiaNome} · ${meta.subNome}</span>
+            <span class="gem-raridade">${meta.raridade}</span>
+          </div>
+          <div class="card-lore">${meta.lore}</div>
+          <div class="card-stats-row">
+            <span class="seed-badge" title="Seed reproduzível">#${opcoes.seed}</span>
+            <div class="atk-def">
+              <span class="stat-atk">⚔ ${meta.atk}</span>
+              <span class="stat-def">🛡 ${meta.def}</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button type="button" class="btn-dl-png">⬇ PNG</button>
+            <button type="button" class="btn-dl-svg">⬇ SVG</button>
+          </div>
+        `;
+
+        const artFrame = card.querySelector('.art-frame');
+        artFrame.append(imgElemento);
+        artFrame.onclick = () => abrirModal(chave, opcoes, meta);
+
+        // Download PNG direto da imagem gerada
+        card.querySelector('.btn-dl-png').onclick = () => {
+          baixarArquivo(imgElemento.src, `${meta.subNome.toLowerCase()}-${opcoes.seed}.png`);
+        };
+
+        // Download SVG compatível com a API original
+        card.querySelector('.btn-dl-svg').onclick = () => {
+          const svgTexto = gerarSVG(chave, opcoes);
+          const blob = new Blob([svgTexto], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          baixarArquivo(url, `${meta.subNome.toLowerCase()}-${opcoes.seed}.svg`);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+
+        elGaleria.append(card);
+      });
+    }
+
+    document.querySelector('#form-controles').onsubmit = e => {
+      e.preventDefault();
+      renderizarGaleria();
+    };
+
+    document.querySelector('#btn-sortear').onclick = () => {
+      elSeed.value = 'col-' + Math.random().toString(36).slice(2, 8);
+      renderizarGaleria();
+    };
+
+    elFamilia.onchange = () => {
+      atualizarMenuSubtipos();
+      renderizarGaleria();
+    };
+
+    [elSubtipo, elQuantidade, elFundo, elModoVisao].forEach(el => {
+      el.onchange = renderizarGaleria;
+    });
+
+    atualizarMenuSubtipos();
+    renderizarGaleria();
+  </script>
+</body>
+</html>
