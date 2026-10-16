@@ -1,5 +1,5 @@
 /* ============================================================================
- * GERADOR PROCEDURAL DE CARTAS SVG v4 (MASTER ILLUSTRATION ENGINE)
+ * GERADOR PROCEDURAL DE CARTAS SVG v5 — BESTIÁRIO EXPANDIDO
  * Renderização Vetorial Multi-Camadas: Cel-Shading, Espaço Negativo e Rigging
  * Compatível com navegador (DOM) e Node.js. Zero dependências externas.
  * ============================================================================ */
@@ -11,8 +11,8 @@
   const SUBTIPOS = {
     0: ['guerreiro', 'mago', 'arqueiro', 'barbaro', 'paladino', 'assassino', 'monge', 'necromante'],
     1: ['orc', 'minotauro', 'dragao', 'slime', 'goblin', 'ciclope', 'golem', 'lobisomem', 'homem-fera', 'hidra', 'demonio'],
-    2: ['robo', 'predador', 'cosmico', 'tecnologico', 'cinzento', 'insetoide', 'drone'],
-    3: ['vampiro', 'dragao-zumbi', 'fantasma', 'lich', 'esqueleto', 'zumbi', 'mumia', 'ceifador'],
+    2: ['robo', 'androide', 'mecha', 'robo-insetoide', 'robo-aracnideo', 'drone', 'sentinela', 'nave', 'disco-voador', 'nave-viva', 'cinzento', 'predador', 'tecnologico', 'insetoide', 'reptiliano', 'tentacular', 'aquatico', 'fungoide', 'cristalino', 'gelatinoso', 'cosmico', 'verme-espacial'],
+    3: ['vampiro', 'vampiro-alado', 'dragao-zumbi', 'fantasma', 'banshee', 'lich', 'rei-esqueleto', 'esqueleto', 'esqueleto-arqueiro', 'esqueleto-guerreiro', 'esqueleto-fazendeiro', 'esqueleto-mago', 'zumbi', 'zumbi-guerreiro', 'zumbi-fazendeiro', 'zumbi-arqueiro', 'zumbi-mago', 'mumia', 'mumia-farao', 'ceifador', 'cavaleiro-da-morte', 'golem-de-carne', 'lobo-zumbi', 'urso-zumbi', 'cervo-zumbi', 'corvo-zumbi', 'aranha-zumbi', 'cavalo-esqueleto'],
     4: ['lobo', 'cachorro', 'raposa', 'urso', 'leao', 'tigre', 'pantera', 'gato', 'touro', 'bufalo', 'cervo', 'javali', 'aguia', 'coruja', 'besouro', 'louva-a-deus', 'aranha', 'cobra']
   };
 
@@ -29,6 +29,38 @@
     lista.forEach(sub => { aliases[sub] = [Number(id), sub, null]; });
   });
 
+  Object.assign(aliases, {
+    'zumbi-homem': [3, 'zumbi', 'M'], 'zumbi-mulher': [3, 'zumbi', 'F'],
+    zumbia: [3, 'zumbi', 'F'], vampira: [3, 'vampiro', 'F'],
+    lichs: [3, 'lich'], mumias: [3, 'mumia'], zumbis: [3, 'zumbi'],
+    esqueletos: [3, 'esqueleto'], robos: [2, 'robo'], naves: [2, 'nave'],
+    'golem-carne': [3, 'golem-de-carne'], 'robo-inseto': [2, 'robo-insetoide'],
+    ovni: [2, 'disco-voador']
+  });
+
+  const NOMES_SUBTIPOS = {
+    robo: 'Robô', androide: 'Androide', mecha: 'Mecha de cerco',
+    'robo-insetoide': 'Robô insetoide', 'robo-aracnideo': 'Robô aracnídeo',
+    drone: 'Drone orbital', sentinela: 'Sentinela trípode', nave: 'Nave de combate',
+    'disco-voador': 'Disco voador', 'nave-viva': 'Nave viva',
+    cinzento: 'Alien cinzento', predador: 'Caçador alienígena', tecnologico: 'Tecnomante alienígena',
+    insetoide: 'Alien insetoide', reptiliano: 'Alien reptiliano', tentacular: 'Alien tentacular',
+    aquatico: 'Alien abissal', fungoide: 'Alien fungoide', cristalino: 'Entidade cristalina',
+    gelatinoso: 'Colônia gelatinosa', cosmico: 'Entidade cósmica', 'verme-espacial': 'Verme espacial',
+    vampiro: 'Vampiro', 'vampiro-alado': 'Vampiro alado', 'dragao-zumbi': 'Dragão zumbi',
+    fantasma: 'Fantasma', banshee: 'Banshee', lich: 'Lich', 'rei-esqueleto': 'Rei esqueleto',
+    esqueleto: 'Esqueleto errante', 'esqueleto-arqueiro': 'Esqueleto arqueiro',
+    'esqueleto-guerreiro': 'Esqueleto guerreiro', 'esqueleto-fazendeiro': 'Esqueleto fazendeiro',
+    'esqueleto-mago': 'Esqueleto mago', zumbi: 'Zumbi', 'zumbi-guerreiro': 'Zumbi guerreiro',
+    'zumbi-fazendeiro': 'Zumbi fazendeiro', 'zumbi-arqueiro': 'Zumbi arqueiro',
+    'zumbi-mago': 'Zumbi mago', mumia: 'Múmia', 'mumia-farao': 'Múmia faraó',
+    ceifador: 'Ceifador', 'cavaleiro-da-morte': 'Cavaleiro da morte',
+    'golem-de-carne': 'Golem de carne', 'lobo-zumbi': 'Lobo zumbi', 'urso-zumbi': 'Urso zumbi',
+    'cervo-zumbi': 'Cervo zumbi', 'corvo-zumbi': 'Corvo zumbi',
+    'aranha-zumbi': 'Aranha zumbi', 'cavalo-esqueleto': 'Cavalo esqueleto'
+  };
+  const normalizar = valor => String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, '-');
+
   // PRNG determinístico (Mulberry32 + FNV-1a Hash)
   function aleatorio(seed) {
     let h = 2166136261;
@@ -44,13 +76,20 @@
     };
   }
 
-  function gerarSVG(tipo, { seed = Math.random().toString(36).slice(2, 10), fundo = true } = {}) {
-    const chave = String(tipo).trim().toLowerCase().replace(/\s+/g, '-');
+  function gerarSVG(tipo, { seed = Math.random().toString(36).slice(2, 10), fundo = true, subtipo: subtipoPedido, genero: generoPedido } = {}) {
+    const chave = normalizar(tipo);
     if (!Object.prototype.hasOwnProperty.call(aliases, chave)) {
       throw new RangeError('Tipo inválido. Use: ' + TIPOS.join(', '));
     }
 
-    const [id, subForcado, genForcado] = aliases[chave];
+    const [id, subAlias, genForcado] = aliases[chave];
+    const subForcado = subtipoPedido == null || subtipoPedido === '' ? subAlias : normalizar(subtipoPedido);
+    if (subForcado && !SUBTIPOS[id].includes(subForcado)) {
+      throw new RangeError('Subtipo inválido para ' + TIPOS[id] + ': ' + subForcado);
+    }
+    if (generoPedido != null && !['M', 'F'].includes(generoPedido)) {
+      throw new RangeError('Gênero inválido. Use M ou F.');
+    }
     const rnd = aleatorio(id + ':' + (subForcado || 'all') + ':' + seed);
     const int = (a, b) => Math.floor(a + rnd() * (b - a + 1));
     const num = (a, b) => +(a + rnd() * (b - a)).toFixed(1);
@@ -58,7 +97,7 @@
     const chance = (p = 0.5) => rnd() < p;
 
     const subtipo = subForcado || esc(SUBTIPOS[id]);
-    const genero = genForcado || (chance(0.5) ? 'F' : 'M');
+    const genero = generoPedido || genForcado || (chance(0.5) ? 'F' : 'M');
     const uid = 'v4_' + Math.abs(int(100000, 999999));
     const tinta = '#07090d';
 
@@ -142,7 +181,10 @@
     };
 
     // ==================== 1. CENÁRIO E ATMOSFERA DA CARTA ====================
-    if (fundo) {
+    // Nas famílias ampliadas, consumir a mesma sequência aleatória mesmo sem
+    // cenário mantém a criatura idêntica ao alternar o fundo da galeria.
+    const inicioCenario = svg.length;
+    if (fundo || id === 2 || id === 3) {
       const hBg = id === 4 ? esc([125, 32, 200, 15]) : H;
       path('M0 0 H320 V320 H0 Z', hsl(hBg, 38, 7), 'none', 0);
       circulo(160, 148, 150, `url(#${uid}_aura)`, 'none', 0);
@@ -153,6 +195,25 @@
         path('M0 242 L55 168 L112 218 L182 148 L255 212 L320 165 V320 H0 Z', hsl(hBg, 30, 13), 'none', 0);
         path('M0 264 L42 228 L88 258 L148 218 L218 256 L278 224 L320 258 V320 H0 Z', hsl(hBg, 35, 9), 'none', 0);
         path('M0 276 Q90 258 165 276 T320 272 V320 H0 Z', '#05070a', 'none', 0);
+      } else if (id === 2) {
+        // Horizonte extraterrestre: planetas, estrelas e luas atrás da silhueta.
+        const planetaX = esc([65, 250]);
+        circulo(planetaX, 65, 38, hsl(H2, 45, 22), 'none', 0);
+        svg.push(`<ellipse cx="${planetaX}" cy="65" rx="58" ry="13" fill="none" stroke="${hsl(H2, 48, 38)}" stroke-width="3" transform="rotate(-24 ${planetaX} 65)" opacity="0.65"/>`);
+        for (let i = 0; i < 32; i++) {
+          circulo(int(12, 308), int(12, 259), num(0.6, 1.8), '#d8eefa', 'none', 0, `opacity="${num(0.3, 0.85)}"`);
+        }
+        path('M0 276 L42 250 L78 268 L112 252 L174 274 L242 246 L288 260 L320 250 V320 H0Z', hsl(H, 24, 13), 'none', 0);
+        linha('M0 295 Q160 270 320 295', 1.5, hsl(H2, 40, 27));
+      } else if (id === 3) {
+        // Ruínas e névoa baixa: a atmosfera não substitui a anatomia da criatura.
+        circulo(244, 65, 36, '#c3d4bc', 'none', 0, 'opacity="0.2"');
+        path('M12 270 V178 Q29 155 46 178 V270 M274 270 V202 Q293 178 308 202 V270', hsl(H, 20, 17), 'none', 0);
+        path('M18 176 L18 120 L26 110 L30 160 L42 146 L36 182 M280 206 L290 144 L302 128 L298 177', 'none', hsl(H, 20, 18), 5);
+        path('M0 274 Q55 255 110 276 T222 270 T320 277 V320 H0Z', '#080e13', 'none', 0);
+        for (let i = 0; i < 4; i++) {
+          svg.push(`<ellipse cx="${int(30, 290)}" cy="${int(272, 301)}" rx="${int(35, 100)}" ry="${int(4, 9)}" fill="${corLuz}" opacity="0.05"/>`);
+        }
       } else {
         // Raios Dimensionais / Rúnicos / Sci-Fi
         const qtdRaios = int(10, 16);
@@ -170,6 +231,7 @@
         path('M0 278 Q82 258 160 276 T320 270 V320 H0 Z', '#040609', 'none', 0);
       }
     }
+    if (!fundo && (id === 2 || id === 3)) svg.splice(inicioCenario);
     // Sombra projetada no solo
     svg.push(`<ellipse cx="160" cy="292" rx="108" ry="13" fill="rgba(0,0,0,0.68)"/>`);
 
@@ -244,6 +306,104 @@
         }
       });
     };
+
+    // Componentes v5. Todos são vetores locais; nenhuma imagem ou fonte externa.
+    const em = (x, y, escala, fn, rotacao = 0) => {
+      svg.push(`<g transform="translate(${x} ${y}) rotate(${rotacao}) scale(${escala})">`);
+      fn();
+      svg.push('</g>');
+    };
+    const elipse = (x, y, rx, ry, cor, borda = tinta, sw = 4) =>
+      svg.push(`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`);
+    const tubo = (d, largura, cor, brilho = true) => {
+      linha(d, largura + 5, tinta);
+      linha(d, largura, cor);
+      if (brilho) linha(d, Math.max(1.5, largura * 0.22), 'rgba(255,255,255,0.22)');
+    };
+    const osso = (x1, y1, x2, y2, largura = 9) => {
+      tubo(`M${x1} ${y1} L${x2} ${y2}`, largura, corOsso);
+      circulo(x1, y1, largura * 0.6, corOsso, tinta, 2.5);
+      circulo(x2, y2, largura * 0.6, corOsso, tinta, 2.5);
+    };
+    const costura = (x1, y1, x2, y2, pontos = 5) => {
+      linha(`M${x1} ${y1} L${x2} ${y2}`, 2.5, '#34232d');
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const dx = -(y2 - y1) / len * 4, dy = (x2 - x1) / len * 4;
+      for (let i = 0; i < pontos; i++) {
+        const t = (i + 0.5) / pontos, x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
+        linha(`M${x - dx} ${y - dy} L${x + dx} ${y + dy}`, 2, '#d0bb9d');
+      }
+    };
+    const cranio = (x, y, escala = 1, olhos = corSec) => em(x, y, escala, () => {
+      formaCel('M-34 -16 C-39 -56 39 -56 34 -16 L38 3 L26 15 L21 36 Q0 44 -21 36 L-26 15 L-38 3Z', `url(#${uid}_osso)`, 5);
+      path('M-29 -13 Q-16 -19 -6 -7 L-9 6 Q-28 12 -29 -13Z M29 -13 Q16 -19 6 -7 L9 6 Q28 12 29 -13Z', '#131823', tinta, 2.5);
+      circulo(-17, -3, 4, olhos, 'none', 0); circulo(17, -3, 4, olhos, 'none', 0);
+      path('M0 5 L-6 17 H6Z', tinta, 'none', 0);
+      linha('M-20 25 Q0 30 20 25', 2.5);
+      for (let i = -14; i <= 14; i += 7) linha(`M${i} 22 V35`, 2);
+      linha('M7 -39 L2 -26 L11 -22 L6 -16', 2, '#786f68');
+    });
+    const costelas = (x, y, escala = 1, quantidade = 4) => em(x, y, escala, () => {
+      tubo(`M0 -5 V${quantidade * 13 + 8}`, 8, corOsso);
+      for (let i = 0; i < quantidade; i++) {
+        const cy = i * 13, w = 34 - i * 4;
+        tubo(`M-3 ${cy + 7} Q${-w - 14} ${cy + 6} ${-w} ${cy - 7}`, 5, corOsso, false);
+        tubo(`M3 ${cy + 7} Q${w + 14} ${cy + 6} ${w} ${cy - 7}`, 5, corOsso, false);
+      }
+    });
+    const maoMorta = (x, y, pele, esqueletica = false, rotacao = 0) => em(x, y, 1, () => {
+      if (esqueletica) {
+        osso(-5, -8, 5, 6, 5);
+        for (let i = 0; i < 3; i++) tubo(`M${-7 + i * 6} 1 L${-10 + i * 6} 13 L${-5 + i * 6} 17`, 3, corOsso, false);
+      } else {
+        formaCel('M-12 -8 L6 -10 L14 -2 L12 13 L5 10 L0 16 L-5 11 L-10 14 L-14 4Z', pele, 4);
+        linha('M-5 1 V10 M2 0 V9 M8 -1 V8', 1.8);
+      }
+    }, rotacao);
+    const chama = (x, y, escala = 1, cor = corSec) => em(x, y, escala, () => {
+      path('M0 24 C-34 12 -20 -14 -9 -20 L-10 0 Q7 -11 3 -38 C29 -19 39 13 0 24Z', cor, tinta, 3);
+      path('M0 18 Q-13 5 2 -10 Q19 8 0 18Z', '#e8fff5', 'none', 0);
+    });
+    // Ponto de empunhadura em (x,y). Cada equipamento tem silhueta própria.
+    const equipamento = (tipoArma, x, y, escala = 1) => em(x, y, escala, () => {
+      const metal = `url(#${uid}_aco)`, ouro = `url(#${uid}_ouro)`;
+      if (tipoArma === 'espada') {
+        formaCel('M-7 -24 L-9 -111 L0 -130 L10 -111 L7 -24Z', metal, 4);
+        linha('M0 -117 V-30', 1.8, '#e6f1f8');
+        path('M-25 -26 L0 -32 L25 -26 L20 -16 H-20Z', ouro, tinta, 4);
+        tubo('M0 -16 V22', 8, '#593526', false); circulo(0, 25, 7, ouro, tinta, 3);
+      } else if (tipoArma === 'machado') {
+        tubo('M0 -118 V75', 8, '#5d4431');
+        formaCel('M0 -101 Q-48 -127 -43 -65 Q-23 -69 0 -77 L0 -101 M4 -102 L25 -113 L36 -76 L4 -80Z', metal, 4.5);
+        linha('M-38 -107 Q-46 -87 -38 -72', 2, '#e5edf4');
+      } else if (tipoArma === 'forcado') {
+        tubo('M0 -80 V78', 7, '#8b643c');
+        linha('M-19 -123 V-91 Q0 -69 19 -91 V-123 M0 -126 V-81', 10, tinta);
+        linha('M-19 -123 V-91 Q0 -69 19 -91 V-123 M0 -126 V-81', 5, corAco);
+      } else if (tipoArma === 'pa') {
+        tubo('M0 -105 V64', 7, '#8b643c');
+        formaCel('M-14 48 H14 L17 80 L0 94 L-17 80Z', metal, 4);
+        path('M-11 -119 H11 V-104 H-11Z', 'none', corAco, 5);
+      } else if (tipoArma === 'arco') {
+        tubo('M0 -101 Q-65 0 0 101', 9, '#735034');
+        linha('M0 -101 L27 0 L0 101', 1.8, corOsso);
+        tubo('M-34 0 H89', 3, '#b9a486', false);
+        path('M-45 0 L-28 -8 L-30 0 L-28 8Z', corAco, tinta, 2);
+        path('M76 0 L90 -8 L88 0 L90 8Z', corSec, tinta, 2);
+      } else if (tipoArma === 'cajado') {
+        tubo('M0 -97 L-6 78', 8, '#554142');
+        path('M-20 -110 L-14 -84 L0 -74 L15 -84 L22 -110', 'none', ouro, 5);
+        chama(0, -113, 0.68);
+      } else if (tipoArma === 'foice') {
+        tubo('M0 -123 V84', 8, '#5d4431');
+        formaCel('M5 -118 C-57 -143 -110 -115 -130 -65 Q-70 -110 -3 -95Z', metal, 5);
+        linha('M-116 -81 Q-61 -115 -7 -106', 2, '#dfedf4');
+      } else if (tipoArma === 'escudo') {
+        formaCel('M-35 -47 L0 -59 L35 -47 L31 6 Q23 37 0 52 Q-23 37 -31 6Z', metal, 5);
+        formaCel('M-26 -40 L0 -48 L26 -40 L22 6 Q16 27 0 38 Q-16 27 -22 6Z', `url(#${uid}_sec)`, 3);
+        cranio(0, -7, 0.47);
+      }
+    });
 
     // =========================================================================
     // MOTOR 1: ANIMAIS SELVAGENS REAIS (18 Espécies com Anatomia Muscular e Pelagem)
@@ -413,7 +573,7 @@
             path('M142 196 L178 196 L166 222 L178 248 L142 248 L154 222 Z', corSec, tinta, 4.5);
           }
           // Cefalotórax e Quelíceras / Mandíbulas
-          formaCel('M112 108 C112 82 208 82 208 108 L220 156 C188 146 132 146 100 156 Z', corSombra, tinta, 7);
+          formaCel('M112 108 C112 82 208 82 208 108 L220 156 C188 146 132 146 100 156 Z', corSombra, 7);
           espelhar(() => {
             formaCel('M128 96 C112 68 122 52 144 62 C134 72 134 84 142 94 Z', `url(#${uid}_osso)`, 5.5);
             desenharOlho(134, 114, 7, 'energia', '#ff1e38', 15);
@@ -946,161 +1106,706 @@
     }
 
     // =========================================================================
-    // MOTOR 4: MORTOS-VIVOS (8 Subarquétipos Sombrios e Detalhados)
+    // MOTOR 4: MORTOS-VIVOS — anatomia, ocupação e equipamento independentes
     // =========================================================================
     else if (id === 3) {
-      if (subtipo === 'vampiro') {
-        desenharAsas('draconica', `url(#${uid}_sec)`);
-        formaCel('M70 164 L92 84 L160 148 L228 84 L250 164 L232 292 H88 Z', '#12060b', 7.5);
-        formaCel('M110 160 L160 228 L210 160 L198 292 H122 Z', '#8f0f26', 6.5);
-        espelhar(() => formaCel('M110 106 L76 88 L94 126 Z', '#dfdce8', 5.5));
-        formaCel('M114 94 C114 50 206 50 206 94 L196 138 L160 166 L124 138 Z', '#dfdce8', 6.5);
-        formaCel('M110 96 C106 42 214 42 210 96 C192 68 174 68 160 88 C146 68 128 68 110 96 Z', '#100e17', 6);
-        desenharOlho(138, 108, 8.5, 'fenda', '#ff143b', 12);
-        desenharOlho(182, 108, 8.5, 'fenda', '#ff143b', -12);
-        linha('M138 140 Q160 134 182 140', 4);
-        path('M142 139 L147 156 L152 139 M178 139 L173 156 L168 139', '#ffffff', tinta, 3.2);
+      const pele = esc(['#82977b', '#798f8a', '#a49b78', '#8e8199', '#5e7c6d']);
+      const peleEscura = esc(['#405655', '#544653', '#4b5942']);
+      const tecido = esc(['#534354', '#494f69', '#635b40', '#385e58', '#6c3948']);
+      const cabelo = esc(['#25242c', '#807568', '#b8b8b2', '#563b38']);
+      const ossoFill = `url(#${uid}_osso)`, metal = `url(#${uid}_aco)`;
+      const energia = esc(['#92ffba', '#7ee7ff', '#d3a4ff', '#ffb573']);
+      const ehOsso = subtipo.startsWith('esqueleto') || ['lich', 'rei-esqueleto', 'cavaleiro-da-morte'].includes(subtipo);
+      const ehZumbi = subtipo.startsWith('zumbi');
+      const profissao = subtipo.split('-').slice(1).join('-');
+      const papel = ['guerreiro', 'arqueiro', 'fazendeiro', 'mago'].includes(profissao)
+        ? profissao : subtipo === 'lich' ? 'mago'
+        : ['rei-esqueleto', 'cavaleiro-da-morte'].includes(subtipo) ? 'guerreiro'
+        : esc(['errante', 'guerreiro', 'arqueiro', 'fazendeiro', 'mago']);
 
-      } else if (subtipo === 'ceifador') {
-        // Ceifador da Morte com Capuz Vazio, Correntes e Foice Colossal à Frente
-        formaCel('M62 292 L88 146 L160 32 L232 146 L258 292 L218 274 L188 292 L160 274 L132 292 L102 274 Z', '#10141d', 7.5);
-        formaCel('M106 136 C106 68 214 68 214 136 C198 176 122 176 106 136 Z', '#030407', 6.5);
-        desenharOlho(136, 116, 7.5, 'energia', '#ff1e42', 12);
-        desenharOlho(184, 116, 7.5, 'energia', '#ff1e42', -12);
-        // Foice Gigante detalhada
-        formaCel('M56 288 L236 38 L246 44 L66 294 Z', '#3d2415', 6);
-        formaCel('M232 48 C134 12 56 54 28 132 C88 86 164 74 224 78 Z', `url(#${uid}_aco)`, 6.5);
-        linha('M42 116 C92 78 158 66 218 68', 3, '#ffffff');
-        // Mão Esquelética segurando a haste da foice
-        formaCel('M132 168 L158 174 L152 194 L126 188 Z', `url(#${uid}_osso)`, 5);
-
-      } else if (subtipo === 'zumbi') {
-        // Zumbi Assimétrico com Pescoço Torto, Cérebro Exposto e Costelas à Mostra
-        formaCel('M84 180 L68 292 H240 L226 166 Z', `url(#${uid}_sec)`, 7);
-        for (let r = 0; r < 3; r++) {
-          formaCel(`M164 ${194 + r * 18} Q198 ${202 + r * 18} 210 ${190 + r * 18} L208 ${200 + r * 18} Q194 ${210 + r * 18} 164 ${202 + r * 18} Z`, `url(#${uid}_osso)`, 4.5);
+      if (['lobo-zumbi', 'urso-zumbi', 'cervo-zumbi', 'cavalo-esqueleto'].includes(subtipo)) {
+        const cavalo = subtipo === 'cavalo-esqueleto', cervo = subtipo === 'cervo-zumbi', urso = subtipo === 'urso-zumbi';
+        const altura = urso ? 16 : 0;
+        const couro = cavalo ? peleEscura : pele;
+        // Cauda, duas pernas distantes e corpo em três quartos.
+        if (cavalo) {
+          formaCel('M246 158 Q293 143 286 227 L272 214 L263 236 L264 191 L244 182Z', cabelo, 5);
+        } else if (!urso && !cervo) {
+          formaCel('M244 173 Q291 145 296 199 L284 215 L288 233 Q255 225 241 199Z', peleEscura, 5);
+          costura(268, 191, 284, 210, 3);
         }
-        svg.push('<g transform="rotate(14 160 118)">');
-        formaCel('M110 94 C106 44 214 44 210 94 C214 138 192 166 160 168 C128 166 106 138 110 94 Z', hsl(112, 28, 38), 7);
-        formaCel('M158 52 C188 48 210 66 208 92 C188 94 170 80 158 52 Z', '#d95b76', 5.5);
-        linha('M170 64 Q184 72 196 66 M176 76 Q190 84 200 78', 3);
-        desenharOlho(134, 112, 13, 'fera', '#e8ff66', 0);
-        circulo(184, 112, 11, '#080a0f', tinta, 4);
-        linha('M176 104 L192 120 M192 104 L176 120', 3.5, '#ff3355');
-        formaCel('M128 144 Q160 134 192 148 L186 164 H134 Z', '#14080c', 5);
-        formaCel('M156 146 C154 174 174 184 180 164 Z', '#d93852', 4.5);
-        svg.push('</g>');
-
-      } else if (subtipo === 'mumia') {
-        // Faraó Múmia Amaldiçoado com Colar Egípcio de Ouro e Faixas Flutuantes
-        formaCel('M92 168 L78 292 H242 L228 168 Z', `url(#${uid}_osso)`, 7);
-        formaCel('M88 164 C118 212 202 212 232 164 L214 152 C186 184 134 184 106 152 Z', `url(#${uid}_ouro)`, 6);
-        formaCel('M110 94 C106 44 214 44 210 94 C214 138 190 166 160 168 C130 166 106 138 110 94 Z', `url(#${uid}_osso)`, 7);
-        for (let y = 68; y <= 272; y += 16) {
-          linha(`M102 ${y} L218 ${y + (y % 32 === 0 ? 12 : -12)}`, 3.8, '#8a7d62');
+        for (const [x, dx] of [[139, 9], [239, 10]]) {
+          osso(x, 207, x + dx, 249, 10); osso(x + dx, 249, x - 3, 278, 8);
+          formaCel(`M${x - 15} 277 H${x + 9} L${x + 13} 290 H${x - 20}Z`, '#3c4242', 4);
         }
-        formaCel('M114 100 H206 L198 124 H122 Z', '#07090e', 5);
-        desenharOlho(136, 112, 7.5, 'energia', corSec, 8);
-        desenharOlho(184, 112, 7.5, 'energia', corSec, -8);
-
-      } else if (subtipo === 'fantasma') {
-        formaCel('M62 288 C78 246 48 196 68 134 C84 62 120 30 160 30 C200 30 236 62 252 134 C272 196 242 246 258 288 L218 260 L188 292 L160 262 L132 292 L102 260 Z', `url(#${uid}_pri)`, 7, 'rgba(255,255,255,0.45)');
-        formaCel('M106 136 C106 74 214 74 214 136 C202 178 118 178 106 136 Z', '#04060a', 6);
-        desenharOlho(136, 120, 9, 'energia', corSec, 12);
-        desenharOlho(184, 120, 9, 'energia', corSec, -12);
-        espelhar(() => formaCel('M64 176 L28 158 L42 186 L20 192 L48 206 L32 218 L66 208 Z', `url(#${uid}_osso)`, 5.5));
-
-      } else {
-        // Lich Rei Arcano, Esqueleto Guerreiro ou Dragão-Zumbi
-        if (subtipo === 'dragao-zumbi') desenharAsas('draconica', hsl(275, 35, 18));
-        formaCel('M84 170 L58 292 H262 L236 170 Z', `url(#${uid}_sec)`, 7);
-        // Coluna Vertebral e Caixa Torácica Anatômica Real
-        formaCel('M152 164 H168 V282 H152 Z', `url(#${uid}_osso)`, 5.5);
-        for (let r = 0; r < 4; r++) {
-          const ry = 182 + r * 20;
-          formaCel(`M112 ${ry} Q160 ${ry + 18} 208 ${ry} L202 ${ry + 10} Q160 ${ry + 26} 118 ${ry + 10} Z`, `url(#${uid}_osso)`, 5);
+        formaCel(`M95 ${151 - altura} Q146 ${123 - altura} 237 147 Q277 159 267 200 L251 222 Q202 231 165 218 L116 220 L88 194Z`, couro, 6);
+        if (!cavalo) {
+          path('M162 158 L179 151 L189 160 L212 157 L228 176 L215 204 L183 209 L162 196Z', '#263c3c', tinta, 3);
         }
-        if (subtipo === 'dragao-zumbi') desenharChifres(122, 88, 1.05, 1);
-        // Crânio Anatômico com Arcos Zigomáticos, Cavidade Nasal e Dentes Individuais
-        formaCel('M108 102 C100 42 220 42 212 102 C218 122 206 138 190 142 L186 174 H134 L130 142 C114 138 102 122 108 102 Z', `url(#${uid}_osso)`, 7);
-        if (subtipo === 'lich') {
-          formaCel('M108 76 L114 30 L138 58 L160 18 L182 58 L206 30 L212 76 Z', `url(#${uid}_ouro)`, 6);
-          circulo(160, 52, 8, corSec, tinta, 3.5);
+        em(194, 170, cavalo ? 1.15 : 0.9, () => costelas(0, 0, 1, 4), -82);
+        if (cavalo) {
+          osso(115, 153, 158, 151, 9); osso(158, 151, 204, 154, 9); osso(204, 154, 244, 161, 9);
+        } else {
+          costura(227, 160, 252, 187, 5);
+          path('M136 189 L145 177 L151 199 L142 214Z', peleEscura, 'none', 0);
         }
-        circulo(136, 110, 16, '#06080c', tinta, 4.5);
-        circulo(184, 110, 16, '#06080c', tinta, 4.5);
-        desenharOlho(136, 110, 6.5, 'energia', '#00ffaa', 0);
-        desenharOlho(184, 110, 6.5, 'energia', '#00ffaa', 0);
-        path('M160 118 L148 138 H172 Z', '#06080c', tinta, 3.5);
-        linha('M134 156 H186 M144 144 V170 M154 144 V170 M166 144 V170 M176 144 V170', 3.5);
-        linha('M178 52 L168 74 L182 82 L172 96', 3);
+        for (const [x, dx] of [[113, -17], [224, -10]]) {
+          if (urso) {
+            formaCel(`M${x - 17} 204 L${x + 16} 209 L${x + 11} 259 L${x + 19} 285 H${x - 24} L${x - 18} 264Z`, pele, 5);
+            costura(x - 14, 247, x + 10, 254, 4);
+          } else {
+            osso(x, 212, x + dx, 252, 11); osso(x + dx, 252, x + dx - 7, 282, 8);
+            formaCel(`M${x + dx - 19} 279 H${x + dx + 5} L${x + dx + 8} 291 H${x + dx - 24}Z`, peleEscura, 4);
+          }
+        }
+        formaCel(cavalo ? 'M115 175 L126 104 L103 73 L77 101 L78 170Z' : 'M118 172 L129 122 L99 102 L66 133 L80 185Z', couro, 5.5);
+        if (cervo) {
+          for (const s of [-1, 1]) {
+            tubo(`M${89 + s * 17} 99 L${89 + s * 27} 64 L${89 + s * 31} 29`, 6, corOsso);
+            linha(`M${89 + s * 27} 63 L${89 + s * 52} 49 L${89 + s * 57} 29 M${89 + s * 30} 40 L${89 + s * 13} 23`, 5, corOsso);
+          }
+        }
+        if (urso) {
+          circulo(65, 104, 15, peleEscura, tinta, 4); circulo(114, 101, 16, peleEscura, tinta, 4);
+        } else {
+          formaCel('M62 119 L50 78 L79 98 M108 105 L119 73 L128 119', couro, 4);
+        }
+        formaCel(cavalo ? 'M70 97 Q103 76 118 111 L102 155 L80 179 L51 162 L57 134Z' : 'M57 117 Q88 89 121 115 L118 155 L96 175 L62 169 L45 148Z', cavalo ? ossoFill : pele, 5.5);
+        // Maxilar exposto e dentes preservam a identidade de cada animal.
+        formaCel('M52 145 L78 143 L102 152 L94 172 L67 177 L45 165Z', ossoFill, 4);
+        linha('M52 158 L94 162 M61 153 V169 M72 154 V173 M83 156 V172', 2.2);
+        path('M52 151 L46 159 L57 160Z', tinta, 'none', 0);
+        desenharOlho(83, 127, 9, 'energia', energia, -10);
+        costura(104, 120, 112, 143, 4);
+        if (!cavalo) path('M95 159 L100 178 L105 159Z', corOsso, tinta, 2.5);
+      } else if (subtipo === 'corvo-zumbi') {
+        // Asas assimétricas, penas partidas e falanges expostas.
+        espelhar(() => {
+          formaCel('M145 155 Q102 71 28 68 L47 91 L15 96 L43 118 L18 137 L50 147 L36 170 L73 175 L67 202 L117 192Z', '#35394b', 5.5);
+          osso(132, 159, 91, 113, 8); osso(91, 113, 32, 81, 6);
+          linha('M91 113 L48 142 M107 135 L70 173 M118 153 L97 184', 3, corOsso);
+        });
+        formaCel('M136 239 L112 293 L140 280 L157 302 L168 279 L198 292 L183 235Z', '#41464e', 5);
+        formaCel('M126 147 Q110 183 132 245 Q159 265 189 239 Q211 187 184 141Z', peleEscura, 5.5);
+        costelas(157, 181, 0.7, 4);
+        osso(141, 246, 133, 273, 5); osso(179, 244, 187, 270, 5);
+        linha('M132 273 L113 283 M132 273 L139 284 M186 270 L171 282 M186 270 L205 280', 4, corOsso);
+        formaCel('M132 134 Q118 95 145 78 L164 54 L171 75 L195 73 L189 87 Q211 109 190 141 L174 155Z', '#3b4051', 5.5);
+        formaCel('M183 103 L234 124 L186 134 L166 127Z', ossoFill, 4.5);
+        linha('M185 122 L220 124', 2.5); desenharOlho(164, 107, 10, 'energia', energia, 10);
+        costura(139, 106, 147, 135, 4);
+      } else if (subtipo === 'aranha-zumbi') {
+        espelhar(() => {
+          for (let i = 0; i < 4; i++) {
+            const y = 144 + i * 17, kx = 53 - i * 7, ky = 78 + i * 46;
+            osso(130, y, kx, ky, 9); osso(kx, ky, 22 + i * 13, ky + 48, 6);
+          }
+        });
+        formaCel('M107 149 Q81 215 112 261 Q159 296 207 261 Q238 219 213 149Z', pele, 6);
+        path('M126 184 L165 170 L194 195 L182 241 L144 255 L124 224Z', peleEscura, tinta, 3);
+        costelas(161, 193, 0.8, 4); costura(107, 221, 135, 255, 6);
+        formaCel('M115 103 Q158 74 205 103 L218 154 L191 177 H129 L102 154Z', ossoFill, 5.5);
+        for (const [x,y,r] of [[137,124,11],[184,124,11],[151,107,6],[171,107,6]]) {
+          circulo(x,y,r,tinta,tinta,2); circulo(x,y,r * 0.42,energia,'none',0);
+        }
+        path('M133 157 Q106 187 146 196 L141 178Z M187 157 Q213 187 174 196 L179 178Z', ossoFill, tinta, 4);
+      } else if (subtipo === 'dragao-zumbi') {
+        desenharAsas('draconica', '#394a48');
+        espelhar(() => {
+          osso(120,156,76,105,7); osso(76,105,22,81,5);
+          path('M50 132 L61 154 L49 173 L44 151Z M87 139 L99 168 L87 158Z', '#0c161c', tinta, 2);
+        });
+        formaCel('M195 228 C267 257 286 210 277 187 Q309 216 291 250 Q267 294 185 265Z', pele, 5.5);
+        osso(249,252,275,235,6); osso(275,235,282,214,5);
+        formaCel('M121 149 Q154 126 194 153 L216 231 Q194 274 154 274 L112 239Z', peleEscura, 6);
+        costelas(161,177,1.05,5);
+        espelhar(() => {
+          formaCel('M120 223 L90 242 L74 284 H126 L141 252Z', pele,5);
+          path('M79 281 L86 268 L92 284 M97 282 L104 267 L110 284 M115 281 L122 267 L129 283', corOsso,tinta,3);
+        });
+        espelhar(() => {
+          formaCel('M126 90 Q96 67 104 33 Q109 60 141 71Z',ossoFill,4.5);
+          formaCel('M119 108 L88 88 L100 117 L120 127Z',pele,4);
+        });
+        formaCel('M112 89 L131 65 L185 65 L212 91 L199 128 L183 143 H136 L117 128Z', ossoFill, 5.5);
+        desenharOlho(136,101,9,'energia',energia,12); desenharOlho(185,101,9,'energia',energia,-12);
+        formaCel('M128 120 L151 111 L189 121 L194 149 L169 165 L128 147Z', ossoFill,4.5);
+        linha('M134 142 L185 146 M144 135 V153 M158 139 V158 M172 140 V155',2.5);
+        path('M141 123 L146 130 L152 125 M176 124 L182 131 L185 125',tinta,tinta,2);
+      } else if (subtipo === 'golem-de-carne') {
+        const remendo = esc(['#ab8381', '#9c9280', '#7f8d82']);
+        // Massa corporal assimétrica, pele remendada e membros de tamanhos distintos.
+        formaCel('M101 227 L89 278 L70 292 H136 L150 239 M174 237 L183 292 H246 L225 277 L213 227Z', '#3a3947', 6);
+        formaCel('M103 129 Q76 125 59 159 L28 210 L40 261 L76 271 L95 243 L78 209 L112 173Z', pele, 6);
+        formaCel('M208 128 Q256 119 267 165 L286 218 L278 253 L249 256 L230 218 L211 186Z', remendo, 6);
+        linha('M46 240 L54 257 M58 235 L65 256 M259 226 L262 245 M272 223 L273 242',3);
+        formaCel('M106 123 Q160 99 214 130 L237 213 L211 250 L166 240 L121 252 L88 210Z', pele, 7);
+        path('M100 157 L159 143 L169 214 L130 234 L101 211Z',remendo,tinta,3);
+        path('M170 145 L207 144 L226 191 L201 208 L174 201Z',peleEscura,tinta,3);
+        costura(160,143,169,214,8); costura(100,156,154,143,6); costura(173,202,205,209,5);
+        costura(38,206,77,219,6); costura(243,172,272,164,5); costura(126,231,160,222,5);
+        path('M186 167 L211 155 L214 187 L184 192Z','#303a3a',tinta,3);
+        osso(188,170,205,169,4); osso(186,181,210,179,4);
+        formaCel('M118 59 Q151 38 184 61 L197 121 L172 142 L127 123Z',remendo,6);
+        formaCel('M118 70 L116 54 L131 45 L139 52 L153 43 L165 51 L182 47 L188 70Z',cabelo,4);
+        desenharOlho(137,87,8,'energia',energia,12); circulo(173,92,9,tinta,tinta,2);
+        costura(155,59,158,101,6); costura(129,113,173,119,6);
+        path('M113 101 H101 V111 H116 M191 105 H205 V117 H193',metal,tinta,4);
+        if (chance(0.4)) cranio(227,139,0.47,energia);
+        else { path('M213 144 L225 106 L235 145Z',ossoFill,tinta,4); costura(194,132,214,146,4); }
+      } else if (['fantasma', 'banshee', 'ceifador'].includes(subtipo)) {
+        const banshee = subtipo === 'banshee', ceifador = subtipo === 'ceifador';
+        const espectro = ceifador ? '#303747' : `url(#${uid}_pri)`;
+        if (banshee) {
+          formaCel('M103 113 Q69 47 135 35 Q181 6 222 62 L249 133 L286 161 L256 177 L280 197 Q209 178 201 126Z', '#9bbcb5', 5);
+          formaCel('M121 81 Q80 92 80 148 L45 183 L68 185 L36 206 Q99 190 119 150Z', '#719c99', 4.5);
+        }
+        formaCel('M123 144 Q95 174 109 222 Q118 260 74 290 L125 280 L143 298 L173 278 L211 292 L196 269 Q252 287 272 253 Q215 259 218 209 L196 143Z', espectro, 6);
+        linha('M141 179 Q130 231 152 269 M177 186 Q198 234 180 263', 3, corLuz);
+        const bracoEspectral = () => {
+          formaCel('M124 149 Q89 143 65 188 L35 189 L55 214 L80 209 L99 181 L116 197Z', espectro, 5);
+          osso(62,192,46,180,5);
+          for (let i=0;i<3;i++) tubo(`M${43+i*6} 182 L${32+i*6} 164 L${36+i*6} 153`,3,corOsso,false);
+        };
+        if (ceifador) {
+          bracoEspectral();
+          formaCel('M199 149 Q231 145 243 175 L262 179 L267 199 L239 204 L214 181 L201 197Z',espectro,5);
+        } else espelhar(bracoEspectral);
+        if (ceifador) {
+          formaCel('M99 135 Q87 72 159 31 Q228 68 221 139 L200 161 L118 160Z','#272c3c',6);
+          path('M116 125 Q117 79 160 64 Q204 86 204 126 L184 152 H135Z','#090f19',tinta,3);
+          cranio(160,113,0.8,energia);
+          equipamento('foice',269,162,0.9);
+          osso(247,189,267,188,6); maoMorta(269,188,pele,true);
+          for(let i=0;i<7;i++) elipse(123+i*10,220+Math.sin(i*.6)*14,6,8,'none',corAco,2);
+        } else if (banshee) {
+          formaCel('M125 85 Q157 60 192 86 L194 115 Q186 147 160 160 Q128 142 125 113Z','#c7d6cb',5);
+          path('M126 88 Q157 54 194 88 L181 59 L145 49 L120 70Z','#a9c2bb',tinta,4);
+          desenharOlho(142,106,9,'energia',energia,18); desenharOlho(180,106,9,'energia',energia,-18);
+          elipse(161,134,11,19,'#15212b',tinta,3);
+          linha('M134 116 L129 137 M186 116 L192 137',3,'#446764');
+        } else {
+          formaCel('M111 112 Q102 51 158 46 Q215 42 214 115 L192 158 L133 158Z',espectro,6);
+          path('M126 98 Q136 89 146 99 L143 119 L128 119Z M177 99 Q188 89 197 99 L194 119 L180 119Z','#10222b',tinta,2);
+          elipse(161,138,9,14,'#10222b','none',0);
+          linha('M124 76 Q154 50 184 67',3,'#c9f9e9');
+        }
+      } else if (['vampiro', 'vampiro-alado'].includes(subtipo)) {
+        const alado = subtipo === 'vampiro-alado';
+        if (alado) desenharAsas('draconica', esc(['#652f47','#503858','#405768']));
+        else formaCel('M105 142 L61 281 L105 269 L129 292 L160 269 L190 292 L217 272 L260 282 L215 142Z','#211e30',6);
+        formaCel('M126 223 L114 286 H149 L162 244 L175 286 H208 L194 223Z','#34313f',5);
+        formaCel('M123 146 L108 204 L133 241 L160 231 L190 243 L211 205 L197 144Z',alado ? '#8896a1' : '#653244',6);
+        path('M142 148 L160 175 L179 148 L172 217 L160 231 L148 216Z',corOsso,tinta,3.5);
+        if (!alado) {
+          formaCel('M128 167 L94 109 L128 121 L160 159 L190 123 L226 108 L195 169 L180 187 L160 175 L143 185Z','#963a53',5);
+          for (let i=0;i<3;i++) circulo(160,186+i*13,2.5,corOuro,'none',0);
+        }
+        tubo('M120 159 L87 195 L66 187',16,alado ? '#8896a1' : '#653244');
+        tubo('M201 159 L231 192 L251 177',16,alado ? '#8896a1' : '#653244');
+        maoMorta(61,182,'#c9cbd2',false,-22); maoMorta(254,174,'#c9cbd2',false,26);
+        if (genero === 'F') formaCel('M119 86 Q98 111 106 164 L128 150 L139 102 M191 85 Q219 121 209 164 L185 147 L178 102Z',cabelo,5);
+        formaCel('M125 86 Q126 49 160 53 Q198 52 198 87 L189 125 L160 145 L132 124Z','#c9cbd2',5);
+        path('M128 96 L111 84 L119 113 L132 118 M191 95 L211 82 L201 115 L188 119','#c9cbd2',tinta,3.5);
+        formaCel('M122 87 Q115 41 161 45 Q205 41 201 87 L179 68 L160 86 L145 67Z',cabelo,5);
+        desenharOlho(143,100,7,'fenda','#fc6d80',10); desenharOlho(180,100,7,'fenda','#fc6d80',-10);
+        linha('M144 124 Q161 119 178 124',2.5);
+        path('M146 123 L150 136 L154 122 M175 123 L171 136 L167 122','#ffffff',tinta,2);
+        circulo(160,163,6,corSec,tinta,2.5);
+      } else if (subtipo === 'mumia' || subtipo === 'mumia-farao') {
+        const farao = subtipo === 'mumia-farao', faixas = esc(['#c9b990','#c8c4a5','#bdb09e']);
+        // Faixas soltas atrás, sem linhas atravessando o espaço vazio.
+        path('M108 171 Q53 159 53 201 T24 244 L39 250 Q75 225 65 201 T115 185Z',faixas,tinta,3);
+        path('M205 145 Q254 122 279 163 L269 170 Q251 140 213 159Z',faixas,tinta,3);
+        if (farao) formaCel('M111 86 Q105 39 160 34 Q214 40 210 87 L228 162 L190 172 L130 172 L92 161Z',`url(#${uid}_ouro)`,5);
+        tubo('M138 226 L123 282',20,faixas); tubo('M182 226 L198 282',20,faixas);
+        formaCel('M112 280 L111 293 H140 L140 281 M185 281 L185 294 H216 L211 279',faixas,4);
+        tubo('M116 159 L83 190 L54 166',19,faixas);
+        tubo(farao ? 'M204 159 L230 196 L258 198' : 'M204 159 L236 189 L254 160',19,faixas);
+        formaCel('M125 134 L111 179 L125 239 L148 248 L181 243 L207 185 L192 136Z',faixas,5.5);
+        for (let y=157;y<=227;y+=14) linha(`M123 ${y} L194 ${y+7}`,2.5,'#7f745d');
+        for (let y=244;y<=274;y+=10) {
+          const lx=138-(y-226)*15/56, rx=182+(y-226)*16/56;
+          linha(`M${lx-7} ${y-3} l14 6 M${rx-7} ${y+3} l14 -6`,2.5,'#7f745d');
+        }
+        for(let i=0;i<4;i++) linha(`M${89+i*6} ${174-i*6} l12 12`,2.2,'#7f745d');
+        if (!farao) for(let i=0;i<4;i++) linha(`M${219+i*6} ${176+i*5} l12 -10`,2.2,'#7f745d');
+        formaCel('M127 79 Q124 49 162 49 Q198 49 194 85 L185 122 L163 142 L135 123Z',faixas,5.5);
+        linha('M132 65 L190 77 M129 83 L191 91 M135 113 L181 124 M145 128 L176 133',2.8,'#7f745d');
+        path('M130 93 L190 98 L184 113 L136 108Z','#262d32',tinta,2.5);
+        desenharOlho(143,100,6,'energia',energia,8); desenharOlho(178,102,6,'energia',energia,-8);
+        maoMorta(51,162,faixas,false,-25);
+        if (farao) {
+          formaCel('M116 136 Q161 172 205 137 L210 157 Q160 197 109 157Z',`url(#${uid}_ouro)`,4.5);
+          linha('M123 150 Q161 178 196 151',4,'#347e8d');
+          path('M148 48 L148 34 L160 25 L171 35 L166 49Z',`url(#${uid}_ouro)`,tinta,3);
+          circulo(160,39,4,energia,tinta,2); equipamento('cajado',260,201,0.76);
+          maoMorta(258,198,faixas);
+        } else maoMorta(256,157,faixas,false,20);
+      } else if (ehOsso || ehZumbi) {
+        const mago = papel === 'mago', guerreiro = papel === 'guerreiro', arqueiro = papel === 'arqueiro', fazendeiro = papel === 'fazendeiro';
+        const regio = ['lich','rei-esqueleto','cavaleiro-da-morte'].includes(subtipo);
+        const inclinacao = ehZumbi ? esc([-9,-5,5,9]) : esc([-3,0,3]);
+        const largura = genero === 'F' ? 29 : 35;
+        const corMembro = ehOsso ? corOsso : pele;
+        const arma = mago ? 'cajado' : guerreiro ? esc(['espada','machado']) : fazendeiro ? esc(['forcado','pa']) : null;
+        if (mago || regio) {
+          formaCel('M115 139 L73 284 L105 274 L125 292 L160 278 L192 291 L215 275 L247 283 L206 138Z',tecido,5.5);
+          linha('M113 177 L97 269 M208 177 L225 269',2.5,corLuz);
+        }
+        if (arqueiro) {
+          formaCel('M183 155 L209 113 L230 123 L209 175Z','#6f4b36',4);
+          for(let i=0;i<3;i++) {
+            linha(`M${209+i*6} ${120+i*3} L${224+i*5} ${84+i*3}`,2.5,corOsso);
+            path(`M${224+i*5} ${84+i*3} l-5 -10 l7 3 l4 9Z`,corSec,tinta,1.5);
+          }
+        }
+        // Vão entre as pernas e articulações legíveis, inclusive nos zumbis.
+        for(const [x,dx] of [[139,-13],[181,13]]) {
+          if (ehOsso) { osso(x,220,x+dx,252,10); osso(x+dx,252,x+dx-3,280,8); }
+          else {
+            formaCel(`M${x-13} 212 L${x+15} 216 L${x+dx+11} 248 L${x+dx+6} 261 L${x+dx-12} 252Z`,tecido,5);
+            tubo(`M${x+dx} 250 L${x+dx-3} 279`,13,pele);
+            costura(x+dx-5,259,x+dx+3,270,3);
+          }
+          formaCel(`M${x+dx-14} 278 L${x+dx+9} 277 L${x+dx+16} 290 H${x+dx-18}Z`,ehOsso ? ossoFill : '#38373c',4);
+        }
+        const bras = (sx,sy,ex,ey,hx,hy) => {
+          if(ehOsso) { osso(sx,sy,ex,ey,8); osso(ex,ey,hx,hy,7); }
+          else { tubo(`M${sx} ${sy} L${ex} ${ey}`,18,tecido); tubo(`M${ex} ${ey} L${hx} ${hy}`,14,pele); costura(ex,ey,hx,hy,4); }
+        };
+        bras(119,154,91,188,arqueiro ? 65 : 66,204);
+        bras(201,154,225,194,arqueiro ? 151 : 258,arqueiro ? 204 : 204);
+        if(ehOsso) {
+          costelas(160,154,1,4);
+          formaCel('M130 207 L149 215 H172 L190 207 L186 227 L167 237 L160 225 L151 237 L132 225Z',ossoFill,4.5);
+        } else {
+          formaCel(`M${160-largura} 139 L116 164 L123 213 L119 230 L140 225 L155 236 L168 224 L189 230 L201 216 L204 163 L${160+largura} 139Z`,tecido,5.5);
+          path('M166 162 L193 168 L197 197 L176 213 L165 200Z',peleEscura,tinta,3);
+          em(180,174,0.52,()=>costelas(0,0,1,3));
+          costura(127,176,143,202,4);
+        }
+        if(guerreiro) {
+          formaCel('M122 149 L160 170 L198 149 L193 202 L166 220 L126 198Z',metal,4.5);
+          path('M143 174 L160 183 L181 170 L174 200 L158 212 L142 196Z',tecido,tinta,3);
+          linha('M180 156 L169 175 L176 185 M131 160 L140 173',2.5,'#46505b');
+          formaCel('M113 139 L89 149 L83 172 L113 180 L133 157Z',metal,4.5);
+          if(regio) path('M96 148 L92 123 L111 142 L116 116 L128 150Z',ossoFill,tinta,3);
+        } else if(fazendeiro) {
+          formaCel('M132 156 L141 156 L141 175 H179 V156 H188 L188 222 L158 230 L130 221Z','#8b7860',4);
+          linha('M145 190 H175 V210 H145Z',2.3,'#4d463b');
+        } else if(mago) {
+          formaCel('M120 139 L160 175 L200 139 L183 204 L160 185 L137 205Z',`url(#${uid}_sec)`,4.5);
+          circulo(160,182,7,energia,tinta,3);
+          if(subtipo==='lich') { chama(69,163,0.8,energia); cranio(70,238,0.38,energia); }
+          else { circulo(65,166,22,'none',energia,2); chama(65,166,0.6,energia); }
+        } else if(arqueiro) {
+          path('M130 140 L139 136 L193 210 L184 216Z','#7e5038',tinta,3.5);
+          circulo(163,178,7,corAco,tinta,2.5);
+        }
+        if(!mago) path('M122 208 L198 208 L195 221 L126 221Z','#453733',tinta,3);
+        // Cabeça independente: traços femininos/masculinos e marcas localizadas.
+        em(160,103,1,()=>{
+          if(ehOsso) cranio(0,0,0.97,energia);
+          else {
+            if(genero==='F') formaCel('M-34 -19 Q-57 13 -40 62 L-29 48 L-18 57 L-22 11 M28 -25 Q51 0 44 54 L28 43 L20 50 L22 7Z',cabelo,4.5);
+            formaCel(genero==='F' ? 'M-34 -20 Q-31 -51 0 -50 Q38 -46 34 -15 L29 20 L5 40 L-23 25 L-36 1Z' : 'M-36 -24 Q-28 -53 7 -49 L37 -32 L35 10 L22 37 L-15 40 L-36 17Z',pele,5.5);
+            path('M-34 -24 L-37 -37 L-24 -50 L-6 -44 L7 -53 L24 -45 L34 -29 L12 -35 L2 -25 L-17 -34Z',cabelo,tinta,3);
+            desenharOlho(-16,-1,9,'fera',energia,10);
+            circulo(17,1,10,peleEscura,tinta,3); circulo(17,1,3.5,energia,'none',0);
+            linha('M-2 3 L-7 13 L1 15',2.5);
+            path('M-21 24 L8 19 L23 26 L14 33 L-13 33Z','#24272b',tinta,3);
+            for(let i=0;i<4;i++) path(`M${-14+i*8} 24 v6 h4 v-7Z`,corOsso,'none',0);
+            costura(20,-23,28,-7,4);
+            if(chance(0.5)) { path('M-28 11 L-16 9 L-11 20 L-24 24Z',peleEscura,tinta,2); }
+            else { path('M-4 -40 L14 -40 L22 -30 L3 -24Z','#b48891',tinta,2); linha('M4 -34 L14 -31',2,'#6f5366'); }
+          }
+          if(regio) {
+            formaCel('M-36 -32 L-41 -60 L-22 -46 L-11 -67 L1 -48 L18 -68 L26 -45 L40 -59 L35 -30Z',subtipo==='cavaleiro-da-morte'?metal:`url(#${uid}_ouro)`,4);
+            circulo(1,-42,5,energia,tinta,2);
+          } else if(fazendeiro) {
+            formaCel('M-31 -31 L-25 -58 L14 -58 L29 -33Z','#ac9566',4);
+            formaCel('M-54 -31 Q-5 -45 49 -31 L45 -23 Q-2 -19 -51 -23Z','#c3ab7e',3.5);
+            linha('M-25 -39 L25 -40',5,'#59463e');
+          } else if(mago) {
+            formaCel('M-43 -24 L-25 -51 L-9 -83 L5 -68 L27 -51 L42 -25 Q-3 -41 -43 -24Z',tecido,4.5);
+            linha('M-27 -42 Q0 -50 27 -40',2.5,corOuro);
+          } else if(guerreiro && chance(0.65)) {
+            formaCel('M-41 -15 L-39 -37 Q0 -71 38 -37 L41 -15 L26 -24 L0 -20 L-27 -26Z',metal,4.5);
+            linha('M0 -52 V-23',2.5);
+          } else if(arqueiro) {
+            formaCel('M-43 12 Q-51 -52 -3 -63 Q45 -51 43 11 L28 -21 L0 -36 L-28 -22Z',tecido,4.5);
+          }
+        },inclinacao);
+        if(arma) equipamento(arma,260,204,0.88);
+        if(arqueiro) equipamento('arco',65,204,0.87);
+        if(guerreiro) equipamento('escudo',69,218,0.88);
+        else maoMorta(arqueiro ? 64 : 65,204,corMembro,ehOsso,-10);
+        maoMorta(arqueiro ? 153 : 259,204,corMembro,ehOsso,10);
       }
     }
 
     // =========================================================================
-    // MOTOR 5: ALIENS, MECHAS & ENTIDADES CÓSMICAS (7 Subarquétipos Sci-Fi)
+    // MOTOR 5: ALIENS — máquinas, veículos e morfologias extraterrestres
     // =========================================================================
-    else {
-      if (subtipo === 'robo') {
-        // Mecha / Androide de Batalha Blindado com Canhões de Ombro e Visor HUD
-        espelhar(() => {
-          formaCel('M108 144 L42 114 L30 168 L96 190 Z', `url(#${uid}_aco)`, 7);
-          formaCel('M64 124 L46 68 L76 68 L88 134 Z', corSombra, 6);
-          formaCel('M102 92 L78 36 L94 36 L114 84 Z', `url(#${uid}_ouro)`, 5.5);
-        });
-        formaCel('M92 164 L112 292 H208 L228 164 Z', `url(#${uid}_aco)`, 7.5);
-        // Placas peitorais mecânicas e Reator de Fusão Central
-        linha('M104 196 L136 214 M216 196 L184 214 M136 214 V284 M184 214 V284', 4.5);
-        formaCel('M160 184 L186 214 L160 244 L134 214 Z', corSec, 6);
-        circulo(160, 214, 11, '#ffffff', 'none', 0);
-        // Cabeça Mecha Angular
-        formaCel('M108 74 L160 56 L212 74 L220 132 L188 160 H132 L100 132 Z', `url(#${uid}_aco)`, 7.5);
-        formaCel('M116 96 L160 104 L204 96 L198 118 L160 124 L122 118 Z', corSec, 5);
-        linha('M136 138 H184 M140 148 H180', 4);
+    else if (id === 2) {
+      const metal = `url(#${uid}_aco)`, casco = `url(#${uid}_pri)`;
+      const escuro = esc(['#283747', '#353248', '#284544', '#4b3542']);
+      const neon = esc(['#89f8e0', '#a9e3ff', '#dfabff', '#ffc27d', '#d0fa87']);
+      const junta = (x,y,r=8) => { circulo(x,y,r,escuro,tinta,3); circulo(x,y,r*.4,neon,'none',0); };
+      const painel = (x,y,w=18,h=8) => {
+        path(`M${x} ${y} h${w} v${h} h${-w}Z`,escuro,tinta,2);
+        for(let i=3;i<w-2;i+=5) linha(`M${x+i} ${y+2} v${h-4}`,1.5,neon);
+      };
+      const propulsor = (x,y,escala=1) => em(x,y,escala,()=>{
+        path('M-12 0 Q-15 26 0 47 Q15 26 12 0Z',neon,tinta,2.5);
+        path('M-5 0 L0 33 L5 0Z','#efffff','none',0);
+        formaCel('M-16 -22 H16 L12 4 H-12Z',metal,4);
+        linha('M-10 -13 H10 M-11 -5 H11',2);
+      });
+      const lente = (x,y,r) => {
+        circulo(x,y,r,escuro,tinta,4); circulo(x,y,r*.7,neon,tinta,2);
+        circulo(x,y,r*.35,corSombra,'none',0); circulo(x-r*.22,y-r*.26,r*.2,'#ffffff','none',0);
+      };
 
+      if (['robo','androide','mecha'].includes(subtipo)) {
+        const pesado = subtipo === 'mecha', androide = subtipo === 'androide';
+        const ombro = pesado ? 52 : androide ? 28 : 39;
+        const yCabeca = pesado ? 92 : 79, cabeca = androide ? 0.8 : pesado ? 0.91 : 1;
+        // Silhueta mecânica completa: quadril, joelhos, pés e braços independentes.
+        if(pesado) {
+          espelhar(()=>{
+            formaCel('M97 148 L76 56 L101 53 L129 138Z',escuro,5);
+            formaCel('M72 55 L99 48 L106 78 L81 85Z',metal,4);
+            painel(80,57,16,10);
+          });
+        } else if(!androide) {
+          formaCel('M114 145 L92 109 L75 111 L89 173Z',metal,4.5);
+          linha('M84 110 V66',5,escuro); circulo(84,64,5,neon,tinta,2);
+        }
+        for(const [x,dir] of [[138,-1],[182,1]]) {
+          const kx=x+dir*(pesado ? 9 : 2), fx=x+dir*(androide ? 8 : 18);
+          tubo(`M${x} 213 L${kx} 248 L${fx} 279`,androide?10:17,escuro);
+          formaCel(`M${x-12} 216 H${x+12} L${kx+14} 240 L${kx-13} 240Z`,casco,4.5);
+          junta(kx,247,androide?7:10);
+          formaCel(`M${kx-12} 254 L${kx+13} 254 L${fx+15} 280 L${fx-15} 280Z`,metal,4.5);
+          formaCel(`M${fx-16} 278 H${fx+14} L${fx+23} 293 H${fx-23}Z`,escuro,4.5);
+          linha(`M${fx-8} 265 L${fx+4} 265`,3,neon);
+        }
+        formaCel('M130 202 L160 192 L191 204 L185 226 L160 238 L135 226Z',metal,5);
+        espelhar(()=>{
+          const sx=160-ombro;
+          tubo(`M${sx} 139 L${sx-30} 181 L${sx-29} 219`,androide?12:21,escuro);
+          junta(sx-30,181,androide?7:10);
+          formaCel(`M${sx-18} 174 L${sx-43} 181 L${sx-47} 216 L${sx-24} 230 L${sx-14} 210Z`,casco,5);
+          formaCel(`M${sx-20} 124 L${sx+8} 130 L${sx+15} 154 L${sx-20} 164 L${sx-38} 145Z`,metal,5);
+          if(androide) {
+            tubo(`M${sx-30} 219 v23`,8,metal);
+            linha(`M${sx-36} 238 v13 M${sx-29} 240 v13 M${sx-22} 238 v12`,3,corAco);
+          } else {
+            formaCel(`M${sx-47} 215 H${sx-22} L${sx-20} 245 L${sx-47} 242Z`,escuro,4.5);
+            painel(sx-43,226,18,8);
+          }
+        });
+        formaCel(`M${160-ombro} 129 L160 116 L${160+ombro} 129 L${160+ombro-8} 193 L178 214 H143 L${160-ombro+9} 192Z`,casco,6);
+        formaCel(androide ? 'M140 130 L160 137 L180 130 L176 179 L160 201 L144 179Z' : 'M120 138 L160 151 L200 138 L194 169 L160 183 L126 169Z',metal,4.5);
+        if(androide) {
+          for(let y=162;y<=192;y+=10) linha(`M146 ${y} H174`,2.5,escuro);
+          circulo(160,150,7,neon,tinta,3);
+        } else {
+          lente(160,166,pesado?19:14); painel(141,193,38,8);
+        }
+        em(160,yCabeca,cabeca,()=>{
+          if(androide) {
+            formaCel('M-27 -22 L-14 -37 H15 L29 -23 L27 17 L13 36 H-12 L-28 16Z',metal,5);
+            path('M-23 -4 H23 L17 6 H-18Z',escuro,tinta,2.5);
+            linha('M-17 0 H-6 M6 0 H17',3,neon); linha('M-8 23 H8 M0 5 V16',2.5);
+            linha('M-20 -24 L-17 -10 M20 -24 L17 -10',2,neon);
+          } else {
+            formaCel('M-35 -21 L0 -36 L35 -21 L39 17 L21 34 H-21 L-39 17Z',metal,5.5);
+            path('M-29 -6 L0 0 L29 -6 L25 10 L0 16 L-25 10Z',neon,tinta,3);
+            path('M-15 17 H15 V28 H-15Z',escuro,tinta,3);
+            linha('M-8 19 V26 M0 19 V26 M8 19 V26',2,corAco);
+            if(chance(.5)) path('M-34 -17 L-43 -49 L-26 -31 M34 -17 L43 -49 L26 -31',corSec,tinta,3);
+          }
+        });
+      } else if (['robo-insetoide','robo-aracnideo','insetoide'].includes(subtipo)) {
+        const organico=subtipo==='insetoide', aranha=subtipo==='robo-aracnideo';
+        const corpo=organico?casco:metal, qtd=aranha?4:3;
+        if(organico) desenharAsas('inseto');
+        // Patas segmentadas possuem juntas próprias e não são braços humanos.
+        espelhar(()=>{
+          for(let i=0;i<qtd;i++) {
+            const base=141+i*23, kx=71-i*10, ky=100+i*43;
+            tubo(`M124 ${base} L${kx} ${ky} L${24+i*12} ${ky+49}`,organico?8:12,organico?corBase:escuro);
+            formaCel(`M119 ${base-6} L${kx} ${ky-7} L${kx-7} ${ky+5} L123 ${base+9}Z`,corpo,4);
+            junta(kx,ky,organico?5:8);
+            path(`M${24+i*12} ${ky+42} l-8 22 l18 -8Z`,organico?corOsso:metal,tinta,3.5);
+          }
+        });
+        formaCel(aranha?'M104 168 Q88 204 112 248 Q160 279 206 248 Q232 205 216 168Z':'M129 165 Q108 220 139 272 L160 289 L181 272 Q211 218 191 165Z',casco,6);
+        if(aranha) {
+          formaCel('M117 180 L160 160 L203 180 L206 221 L160 249 L114 221Z',metal,4.5);
+          lente(160,204,22); painel(138,237,44,8);
+        } else {
+          for(let y=194;y<270;y+=18) linha(`M133 ${y} Q160 ${y+12} 187 ${y}`,3,escuro);
+          linha('M160 186 V279',3,organico?corSec:neon);
+        }
+        formaCel('M130 117 L160 105 L190 117 L200 165 L160 188 L120 165Z',corpo,5.5);
+        espelhar(()=>{
+          tubo('M143 89 L123 57 L101 43',4,organico?corSombra:corAco);
+          circulo(101,43,5,neon,tinta,2);
+        });
+        formaCel(aranha?'M116 99 L138 81 H182 L205 99 L198 137 L160 151 L122 137Z':'M102 90 L160 74 L218 90 L186 126 L160 144 L134 126Z',corpo,5.5);
+        if(organico) {
+          elipse(120,100,17,20,corSec,tinta,4); elipse(200,100,17,20,corSec,tinta,4);
+          for(const cx of [120,200]) for(let j=-1;j<=1;j++) for(let k=-1;k<=1;k++) circulo(cx+j*7,100+k*9,2.2,corLuz,'none',0);
+        } else if(aranha) {
+          for(const [x,y,r] of [[137,110,10],[183,110,10],[151,94,5],[169,94,5]]) lente(x,y,r);
+        } else { lente(130,102,14); lente(190,102,14); }
+        path('M143 127 Q117 146 149 158 L145 143Z M177 127 Q203 146 171 158 L175 143Z',organico?corOsso:metal,tinta,3.5);
+        if(!aranha) {
+          espelhar(()=>{
+            formaCel('M124 152 L84 122 L57 153 L68 167 L89 145 L122 170Z',corpo,4.5);
+            formaCel('M58 151 L27 200 Q58 194 80 166Z',organico?`url(#${uid}_sec)`:metal,4.5);
+            linha('M36 190 L67 165',2,neon);
+          });
+        }
       } else if (subtipo === 'drone') {
-        // Sonda Sentinela Orbital Esférica com Braços de Plasma e Lente Central
-        espelhar(() => {
-          formaCel('M98 144 L24 98 L16 146 L72 174 Z', `url(#${uid}_aco)`, 6.5);
-          formaCel('M86 188 C42 214 36 264 74 284 C60 252 68 220 102 204 Z', `url(#${uid}_sec)`, 6);
+        const formato=int(0,2);
+        espelhar(()=>{
+          formaCel('M109 151 L70 121 L37 130 L25 170 L67 189 L107 176Z',metal,5);
+          painel(37,146,29,12); propulsor(59,195,.63);
+          tubo('M129 210 L103 242 L87 239',8,escuro); junta(103,242,7);
+          path('M88 234 L72 240 L79 256 M88 245 L91 258 L104 252','none',corAco,5);
         });
-        formaCel('M92 154 C92 64 228 64 228 154 C228 244 92 244 92 154 Z', `url(#${uid}_aco)`, 7.5);
-        circulo(160, 154, 46, '#080c12', tinta, 6);
-        circulo(160, 154, 28, corSec, tinta, 4.5);
-        circulo(150, 144, 9, '#ffffff', 'none', 0);
-
-      } else if (subtipo === 'predador') {
-        // Caçador Biomecânico Galáctico com Dreadlocks, Mandíbulas e Lâminas Duplas
-        formaCel('M88 164 L108 292 H212 L232 164 Z', `url(#${uid}_pri)`, 7);
-        espelhar(() => {
-          for (let d = 0; d < 4; d++) {
-            formaCel(`M${108 - d * 6} ${84 + d * 12} C${58 - d * 8} ${128 + d * 14} ${54 - d * 8} ${176 + d * 14} ${72 - d * 6} ${204 + d * 12} L${84 - d * 6} ${196 + d * 12} C${72 - d * 6} ${168 + d * 14} ${76 - d * 6} ${128 + d * 14} ${114 - d * 6} ${94 + d * 12} Z`, '#141820', 5);
-          }
-          formaCel('M114 136 L88 162 L124 168 Z', `url(#${uid}_osso)`, 5);
-          // Lâminas de Pulso Energizadas cruzadas à frente
-          formaCel('M42 198 L148 258 L140 270 L34 210 Z', `url(#${uid}_aco)`, 5.5);
+        if(formato===0) circulo(160,152,68,casco,tinta,6);
+        else formaCel(formato===1?'M101 110 L160 76 L219 110 L223 174 L187 211 H133 L97 174Z':'M98 127 Q99 79 160 80 Q220 79 222 127 L209 199 L160 223 L110 199Z',casco,6);
+        lente(160,149,43); linha('M139 100 Q161 89 184 104',3,neon);
+        painel(140,201,40,8); tubo('M160 83 V54',5,metal); circulo(160,48,9,neon,tinta,3);
+      } else if (subtipo === 'sentinela') {
+        // Trípode de exploração, com três pernas e um único sensor elevado.
+        for(const [kx,ky,fx] of [[160,226,167],[76,222,34],[244,222,286]]) {
+          tubo(`M160 160 L${kx} ${ky} L${fx} 285`,13,escuro);
+          junta(kx,ky,10);
+          formaCel(`M${fx-15} 279 L${fx+13} 279 L${fx+22} 292 H${fx-24}Z`,metal,4);
+          linha(`M${kx} ${ky+13} L${fx} 273`,3,neon);
+        }
+        formaCel('M112 96 L146 71 L199 87 L220 126 L192 175 L134 179 L100 144Z',metal,6);
+        formaCel('M108 131 L145 109 L204 115 L194 150 L145 164Z',casco,4.5);
+        lente(158,133,25);
+        tubo('M128 94 L116 58',5,escuro); circulo(113,51,7,neon,tinta,3);
+        tubo('M196 101 L221 76',5,escuro); painel(215,61,23,17);
+      } else if (['nave','disco-voador','nave-viva'].includes(subtipo)) {
+        if(subtipo==='disco-voador') {
+          const raio=int(111,134), altura=int(125,148);
+          path(`M129 ${altura+39} L80 286 Q160 309 240 286 L191 ${altura+39}Z`,neon,'none',0,'opacity="0.12"');
+          elipse(160,287,80,13,'none',neon,1.5);
+          formaCel(`M${160-raio} ${altura} Q160 ${altura-70} ${160+raio} ${altura} L${160+raio-21} ${altura+37} Q160 ${altura+78} ${181-raio} ${altura+37}Z`,metal,6);
+          elipse(160,altura,raio,32,casco,tinta,5);
+          formaCel(`M104 ${altura-9} Q104 ${altura-80} 160 ${altura-80} Q216 ${altura-80} 216 ${altura-9} Q160 ${altura+12} 104 ${altura-9}Z`,escuro,4.5);
+          path(`M114 ${altura-20} Q112 ${altura-63} 157 ${altura-69} Q134 ${altura-45} 144 ${altura-17}Z`,neon,'none',0,'opacity="0.48"');
+          if(chance(.6)) { elipse(174,altura-32,17,23,corBase,tinta,2); elipse(167,altura-35,5,8,tinta,'none',0); elipse(181,altura-35,5,8,tinta,'none',0); }
+          for(let i=0;i<7;i++) circulo(61+i*33,altura+24+Math.sin(i/6*Math.PI)*17,5,neon,tinta,2);
+          elipse(160,altura+58,23,6,neon,tinta,3);
+        } else if(subtipo==='nave') {
+          const asa=esc([18,30,42]);
+          propulsor(116,251,.78); propulsor(204,251,.78);
+          // Vista superior: cabine, duas asas, canhões e motores separados.
+          formaCel(`M140 102 L${asa} 222 L${asa+9} 251 L118 215 L160 247 L202 215 L${320-asa-9} 251 L${320-asa} 222 L180 102Z`,casco,6);
+          espelhar(()=>{
+            formaCel('M106 136 L88 144 L89 240 L123 250 L134 203Z',metal,4.5);
+            painel(98,197,19,22);
+            tubo('M62 191 V147',7,escuro); circulo(62,145,4,neon,tinta,2);
+            linha(`M${asa+15} 224 L117 159`,3,neon);
+          });
+          formaCel('M160 29 L184 98 L182 207 L160 250 L138 207 L136 98Z',metal,5.5);
+          formaCel('M160 74 L174 112 L169 170 H151 L146 112Z',escuro,4);
+          path('M160 86 L165 116 L162 154 H153 L153 114Z',neon,'none',0);
+          painel(147,193,26,10); linha('M160 215 V236',3,corSec);
+        } else {
+          // Organonave em forma de arraia: asas vivas, costelas e bolsas de propulsão.
+          formaCel('M146 191 Q88 220 47 211 L20 229 L35 192 L18 171 L68 135 L121 111 L160 83 L199 111 L252 135 L302 171 L285 192 L300 229 L273 211 Q232 220 174 191Z',casco,6);
+          espelhar(()=>{
+            for(let i=0;i<4;i++) linha(`M${136-i*8} ${135+i*11} Q${90-i*12} ${147+i*12} ${43+i*7} ${180+i*5}`,3,corLuz);
+            formaCel('M112 153 Q77 178 86 214 Q110 227 125 204Z',escuro,4);
+            elipse(105,197,10,17,neon,tinta,2.5);
+            tubo('M121 202 Q105 255 79 267',6,corSec);
+          });
+          formaCel('M160 57 Q202 97 188 161 L173 200 L182 272 L160 297 L139 272 L147 200 L132 162 Q118 99 160 57Z',`url(#${uid}_sec)`,5.5);
+          for(let y=176;y<276;y+=16) linha(`M147 ${y} Q160 ${y+8} 174 ${y}`,2.5,escuro);
+          desenharOlho(151,121,8,'fenda',neon,20); desenharOlho(173,121,8,'fenda',neon,-20);
+          path('M150 147 L160 170 L172 146Z',escuro,tinta,3);
+        }
+      } else if (subtipo === 'cinzento' || subtipo === 'tecnologico') {
+        const tec=subtipo==='tecnologico', corPele=esc(['#9aaeb2','#94ada3','#b7a5c5','#a2b9cd']);
+        const cranioLargo=int(43,56);
+        if(tec) {
+          circulo(160,113,87,'none',corSec,2,'stroke-dasharray="12 7"');
+          formaCel('M116 147 L89 200 L102 255 L135 227 M204 147 L231 200 L218 255 L185 227',metal,5);
+          lente(72,116,13); lente(248,116,13);
+        }
+        tubo('M146 221 L134 252 L128 280',12,corPele); tubo('M174 221 L185 253 L196 280',12,corPele);
+        formaCel('M128 274 L111 289 L139 291 L142 279 M193 274 L182 289 L213 291 L208 280Z',tec?metal:corPele,4);
+        formaCel('M142 144 Q160 131 179 144 L194 182 L178 230 Q160 241 141 230 L128 181Z',tec?casco:corPele,5.5);
+        tubo('M136 159 L104 197 L84 181',11,corPele); tubo('M184 159 L215 200 L241 180',11,corPele);
+        for(const [x,s] of [[84,-1],[241,1]]) {
+          elipse(x,176,9,12,corPele,tinta,3);
+          for(let i=0;i<3;i++) tubo(`M${x-6+i*6} 174 Q${x-9+i*8} 153 ${x+s*(6+i*4)} ${146+i*3}`,3,corPele,false);
+        }
+        if(tec) { formaCel('M137 160 L159 177 L183 160 L174 198 H146Z',metal,3.5); lente(160,189,10); painel(145,217,29,7); }
+        else { linha('M145 177 Q160 185 176 177 M149 203 Q160 209 173 203',2.5,'#627d83'); }
+        tubo('M159 151 V130',14,corPele);
+        formaCel(`M160 33 C${160-cranioLargo-26} 31 ${160-cranioLargo-10} 98 127 125 L149 145 H172 L194 124 C${160+cranioLargo+10} 98 ${160+cranioLargo+26} 31 160 33Z`,corPele,5.5);
+        path('M115 83 Q138 81 149 108 Q128 120 115 99Z M205 83 Q182 81 171 108 Q192 120 205 99Z','#16242c',tinta,3);
+        elipse(127,93,4,7,'#c6edf0','none',0); elipse(192,93,4,7,'#c6edf0','none',0);
+        linha('M151 128 Q160 132 169 128',2.5); circulo(157,118,1.5,tinta,'none',0); circulo(164,118,1.5,tinta,'none',0);
+        if(tec) { formaCel('M121 63 Q160 20 199 63 L186 68 L160 56 L135 69Z',metal,4); lente(160,57,8); }
+      } else if (subtipo === 'predador' || subtipo === 'reptiliano') {
+        const reptil=subtipo==='reptiliano';
+        formaCel('M192 218 Q257 245 273 185 Q299 237 270 262 Q224 289 178 247Z',casco,5.5);
+        for(let i=0;i<4;i++) path(`M${223+i*13} ${249-i*8} l12 -19 l5 18Z`,corSec,tinta,3);
+        tubo('M136 222 L111 253 L112 280',22,corBase); tubo('M185 222 L208 250 L221 280',22,corBase);
+        formaCel('M99 274 L89 292 L129 291 L127 275 M210 275 L207 291 H245 L234 275Z',casco,4.5);
+        formaCel('M118 135 L93 172 L110 196 L133 162 M201 135 L226 171 L211 199 L188 162',casco,5);
+        formaCel('M108 178 L84 193 L66 224 L89 241 L111 219 L127 193Z',reptil?casco:metal,5);
+        formaCel('M213 178 L235 196 L255 216 L240 239 L218 219 L198 193Z',reptil?casco:metal,5);
+        path('M68 224 L54 247 L72 240 L74 256 L90 237 M250 221 L270 238 L254 238 L260 252 L240 238Z',corOsso,tinta,3);
+        formaCel('M126 134 L159 121 L195 135 L205 176 L184 226 L161 245 L134 228 L113 174Z',casco,6);
+        formaCel('M140 150 L161 162 L184 149 L181 218 L160 232 L139 215Z',reptil?`url(#${uid}_osso)`:metal,4);
+        for(let y=176;y<=213;y+=12) linha(`M142 ${y} Q161 ${y+9} 179 ${y}`,2.5);
+        if(!reptil) {
+          espelhar(()=>{
+            for(let i=0;i<3;i++) tubo(`M${129-i*5} ${74+i*11} Q${81-i*12} ${98+i*13} ${101-i*8} ${164+i*8}`,8,escuro);
+            path('M103 199 L46 154 L75 212Z',metal,tinta,3.5);
+          });
+        } else {
+          formaCel('M129 91 L114 48 L140 60 L151 27 L169 55 L190 35 L195 76Z',`url(#${uid}_sec)`,4.5);
+        }
+        formaCel(reptil?'M119 78 L151 60 L190 72 L207 105 L187 137 L146 145 L115 114Z':'M121 65 L160 47 L199 67 L206 112 L188 139 L160 151 L132 137 L115 112Z',casco,5.5);
+        desenharOlho(138,96,9,'fenda',neon,15); desenharOlho(183,95,9,'fenda',neon,-15);
+        if(reptil) {
+          formaCel('M126 111 L163 102 L198 115 L186 140 L147 144 L123 131Z',corBase,4);
+          linha('M132 129 L185 131',3); path('M140 129 L144 140 L148 130 M175 129 L179 139 L183 129',corOsso,tinta,2);
+          circulo(153,115,2.5,tinta,'none',0); circulo(173,115,2.5,tinta,'none',0);
+          for(let i=0;i<5;i++) path(`M${124+i*8} ${78+(i%2)*5} l4 -6 l4 6 l-4 3Z`,corLuz,'none',0);
+        } else {
+          path('M141 113 L129 133 L147 147 L153 125 M180 113 L193 134 L174 149 L168 125',corOsso,tinta,3.5);
+          path('M151 118 L161 111 L171 119 L166 138 H155Z',escuro,tinta,3);
+          lente(160,74,6);
+        }
+      } else if (subtipo === 'tentacular') {
+        const bulbo=int(0,2), tentaculos=int(6,8);
+        for(let i=0;i<tentaculos;i++) {
+          const x=128+i*64/(tentaculos-1), end=30+i*260/(tentaculos-1), y=int(247,290), desvio=end<160?-28:28;
+          tubo(`M${x} 160 C${x+desvio} 202 ${end+desvio} ${y-40} ${end} ${y} Q${end-desvio*.5} ${y+12} ${end-desvio*.7} ${y-9}`,int(11,16),i%2?corBase:corSec);
+          for(let j=0;j<3;j++) circulo(end+(x-end)*(.24+j*.09),y-35-j*10,2.2,corLuz,'none',0);
+        }
+        formaCel(bulbo===0?'M108 114 Q83 44 154 33 Q217 25 220 98 L202 154 L160 183 L120 153Z':bulbo===1?'M92 98 Q100 40 145 69 L160 38 L178 68 Q223 41 229 99 L196 156 L160 175 L121 152Z':'M111 76 L159 29 L208 77 L221 126 L192 159 L160 175 L125 157 L98 125Z',casco,6);
+        const olhos=esc([3,5]);
+        for(let i=0;i<olhos;i++) desenharOlho(120+i*80/(olhos-1),104+Math.sin(i*Math.PI/(olhos-1))*12,olhos===3?11:7,'fenda',neon,12-i*24/(olhos-1));
+        path('M145 143 Q160 133 177 144 L163 158Z',escuro,tinta,3.5);
+        for(let i=0;i<4;i++) circulo(145+i*11,75-Math.sin(i)*12,3,corLuz,'none',0);
+      } else if (subtipo === 'aquatico') {
+        // Alien abissal: lanterna, barbatanas e cauda, sem pernas humanoides.
+        formaCel('M148 192 Q121 242 167 258 Q196 280 162 293 Q228 301 232 263 Q224 232 179 207Z',casco,5);
+        path('M170 258 L152 241 L138 253 L153 280 L162 293 L190 283Z',`url(#${uid}_sec)`,tinta,3.5);
+        espelhar(()=>{
+          formaCel('M121 132 L58 98 L79 132 L30 153 L68 170 L51 198 L109 177Z',`url(#${uid}_sec)`,5);
+          linha('M117 150 L47 152 M111 155 L67 183 M112 141 L73 117',2.5,corLuz);
         });
-        formaCel('M110 68 L160 50 L210 68 L204 158 L160 178 L116 158 Z', `url(#${uid}_aco)`, 7);
-        desenharOlho(136, 108, 10, 'energia', '#ff2244', 14);
-        desenharOlho(184, 108, 10, 'energia', '#ff2244', -14);
-
-      } else {
-        // Entidade Cósmica Astral / Alien Psíquico / Tecnológico
-        espelhar(() => {
-          for (let t = 0; t < 3; t++) {
-            formaCel(`M142 ${162 + t * 14} C${72 - t * 16} ${178 + t * 18} ${48 - t * 12} ${248} ${84 - t * 18} 288 C${68 - t * 12} 248 ${92 - t * 12} ${198 + t * 14} 148 ${178 + t * 14} Z`, `url(#${uid}_sec)`, 5.5);
-          }
+        formaCel('M104 115 Q99 65 157 61 Q218 62 219 119 L202 185 L174 222 H146 L115 186Z',casco,6);
+        tubo('M158 66 Q161 19 205 31 Q225 39 218 60',5,corBase); circulo(217,64,12,neon,tinta,3); circulo(214,60,4,'#fff','none',0);
+        desenharOlho(130,118,11,'fenda',neon,15); desenharOlho(190,118,11,'fenda',neon,-15);
+        formaCel('M122 158 Q159 137 197 160 Q190 199 160 204 Q130 195 122 158Z',escuro,4);
+        for(let i=0;i<6;i++) path(`M${130+i*11} ${158+Math.abs(2.5-i)*2} l4 18 l5 -18Z`,corOsso,tinta,1.5);
+        for(let i=0;i<4;i++) path(`M${139+i*12} 194 l4 -14 l5 14Z`,corOsso,tinta,1.5);
+        for(const s of [-1,1]) for(let i=0;i<4;i++) circulo(160+s*(44-i*4),139+i*15,3,neon,'none',0);
+      } else if (subtipo === 'fungoide') {
+        for(let i=0;i<6;i++) {
+          const x=82+i*31;
+          tubo(`M${141+i*7} 229 Q${x} 251 ${x-13} 288 Q${x+4} 276 ${x+14} 286`,9,i%2?corBase:corSec);
+        }
+        tubo('M130 177 Q86 165 72 203 L49 211',11,corBase); tubo('M194 169 Q224 154 253 177 L264 163',11,corBase);
+        formaCel('M133 117 Q147 176 118 232 Q160 258 202 232 Q175 181 190 118Z',`url(#${uid}_osso)`,5.5);
+        linha('M147 160 Q156 199 138 231 M175 157 Q165 199 184 234',3,corSombra);
+        const chapeu=esc([0,1]);
+        formaCel(chapeu===0?'M51 116 Q80 80 102 65 Q163 15 219 66 L270 116 Q161 156 51 116Z':'M61 116 L97 94 L109 54 L137 63 L157 24 L181 60 L214 52 L225 92 L264 116 Q162 160 61 116Z',casco,6);
+        path('M68 117 Q160 150 252 117 Q158 130 68 117Z',corSombra,tinta,2.5);
+        for(const [x,y,r] of [[106,93,10],[146,68,12],[188,91,15],[215,108,6],[169,106,7]]) {
+          elipse(x,y,r,r*.6,neon,tinta,2.5); circulo(x-2,y-2,2,'#fff','none',0);
+        }
+        desenharOlho(146,164,8,'energia',corSec,14); desenharOlho(181,165,8,'energia',corSec,-14);
+        path('M154 196 Q164 189 176 197 L170 211 H160Z',escuro,tinta,3);
+        for(const [x,y] of [[46,203],[266,155],[83,57]]) { circulo(x,y,6,neon,tinta,2); linha(`M${x} ${y+8} l-4 11`,2,corBase); }
+      } else if (subtipo === 'cristalino') {
+        // Facetas orientadas: a seed altera as proporções dos cristais.
+        const cristal=(x,y,w,h,angle=0)=>em(x,y,1,()=>{
+          formaCel(`M0 ${-h} L${w} ${-h*.42} L${w*.67} ${h*.25} L0 ${h*.5} L${-w*.7} ${h*.25} L${-w} ${-h*.42}Z`,casco,4.5);
+          path(`M0 ${-h} V${h*.5} L${-w*.7} ${h*.25} L${-w} ${-h*.42}Z`,corSec,tinta,2);
+          path(`M0 ${-h} L${w} ${-h*.42} L0 ${-h*.2}Z`,corLuz,tinta,2);
+          linha(`M0 ${-h*.2} L${w*.67} ${h*.25}`,2,neon);
+        },angle);
+        cristal(93,171,27,int(50,72),-38); cristal(228,175,26,int(54,75),38);
+        cristal(123,254,22,48,20); cristal(195,252,22,49,-20);
+        cristal(160,166,51,int(76,99));
+        cristal(123,108,19,51,-30); cristal(199,103,19,56,28);
+        cristal(163,84,25,53);
+        lente(160,166,18);
+        for(const [x,y] of [[52,91],[263,99],[71,256],[252,267]]) cristal(x,y,8,int(11,18),int(-25,25));
+      } else if (subtipo === 'gelatinoso') {
+        const lobos=int(4,7);
+        // Membrana assimétrica; olhos e organelas ficam restritos ao corpo central.
+        formaCel('M65 195 C30 154 50 104 83 102 C79 63 126 41 153 66 C186 30 226 61 225 97 C278 94 291 138 262 170 C296 211 257 256 215 249 C192 290 141 279 120 256 C61 280 35 235 65 195Z',casco,6);
+        path('M82 169 Q58 138 88 121 Q94 81 125 87 Q103 111 101 145Z',corLuz,'none',0,'opacity="0.5"');
+        for(let i=0;i<lobos;i++) {
+          const x=int(100,218),y=int(116,221),r=int(7,14);
+          circulo(x,y,r,corSec,tinta,2.5); circulo(x-2,y-2,r*.25,neon,'none',0);
+        }
+        const olhos=esc([1,3,5]);
+        if(olhos===1) lente(160,147,36);
+        else for(let i=0;i<olhos;i++) lente(99+i*122/(olhos-1),140+Math.sin(i*1.8)*22,olhos===3?19:12);
+        path('M130 210 Q161 231 198 204 Q180 247 146 237Z',escuro,tinta,3);
+        for(let i=0;i<3;i++) path(`M${148+i*13} 220 l4 9 l5 -8Z`,corOsso,'none',0);
+        elipse(84,276,20,9,corBase,tinta,3); elipse(239,273,13,6,corSec,tinta,3);
+      } else if (subtipo === 'cosmico') {
+        // Entidade não humanoide: anéis orbitais, núcleo vivo e fragmentos flutuantes.
+        for(const a of [-42,38,88]) em(160,160,1,()=>elipse(0,0,125,44,'none',corSec,3),a);
+        formaCel('M161 47 L195 88 L191 122 L224 154 L201 190 L194 233 L161 270 L130 232 L123 192 L95 159 L128 123 L125 88Z',escuro,5.5);
+        path('M161 58 L145 102 L160 129 L142 165 L164 198 L148 230 L161 259 L182 225 L175 194 L192 160 L176 128 L183 99Z',casco,tinta,3);
+        for(let i=0;i<12;i++) circulo(int(139,182),int(94,229),num(1.2,2.5),neon,'none',0);
+        desenharOlho(160,156,28,'fenda',neon,0);
+        for(let i=0;i<6;i++) {
+          const a=(i*60+15)*Math.PI/180,x=160+Math.cos(a)*118,y=160+Math.sin(a)*118;
+          em(x,y,1,()=>path('M0 -12 L9 0 L0 13 L-9 0Z',casco,tinta,3),i*30);
+        }
+        circulo(160,156,53,'none',neon,2,'stroke-dasharray="5 11"');
+      } else if (subtipo === 'verme-espacial') {
+        // Anéis sucessivos ao longo da curva formam o corpo serpentiforme.
+        tubo('M244 277 C96 288 68 236 138 216 C234 196 231 150 185 129',43,corBase);
+        for(let i=0;i<9;i++) {
+          const t=i/8, x=99+143*t, y=252+Math.sin(t*Math.PI)*22;
+          linha(`M${x} ${y-16} Q${x-8} ${y} ${x+3} ${y+18}`,3,corSombra);
+        }
+        formaCel('M229 263 L290 265 L268 281 L288 294 L245 296 L226 284Z',`url(#${uid}_sec)`,4.5);
+        espelhar(()=>{
+          formaCel('M119 150 L81 177 L99 127 L82 102 L114 111Z',`url(#${uid}_sec)`,4.5);
         });
-        formaCel('M92 174 L116 292 H204 L228 174 L192 148 H128 Z', `url(#${uid}_sec)`, 7);
-        formaCel('M160 22 C74 26 78 124 118 164 L144 188 H176 L202 164 C242 124 246 26 160 22 Z', `url(#${uid}_pri)`, 7.5);
-        linha('M160 36 V96 M132 52 L160 76 L188 52', 3.5, corSec);
-        desenharOlho(130, 118, 13, subtipo === 'cosmico' ? 'fenda' : 'energia', '#00ffcc', 18);
-        desenharOlho(190, 118, 13, subtipo === 'cosmico' ? 'fenda' : 'energia', '#00ffcc', -18);
-        if (subtipo === 'cosmico') desenharOlho(160, 82, 15, 'fenda', '#00ffcc', 0);
+        const largura=int(52,65);
+        elipse(160,112,largura,68,casco,tinta,6);
+        elipse(160,118,largura-14,51,escuro,tinta,4);
+        for(let i=0;i<12;i++) {
+          const a=i*Math.PI*2/12,x=160+Math.cos(a)*(largura-17),y=118+Math.sin(a)*46;
+          const bx=160+Math.cos(a+.16)*(largura-17),by=118+Math.sin(a+.16)*46;
+          path(`M${x} ${y} L${160+Math.cos(a+.08)*23} ${118+Math.sin(a+.08)*25} L${bx} ${by}Z`,corOsso,tinta,1.6);
+        }
+        elipse(160,118,19,24,corSombra,tinta,3);
+        for(const [x,y] of [[119,75],[142,55],[179,55],[202,75]]) lente(x,y,7);
+        linha('M146 114 L154 122 L167 112 L176 121',2,neon);
       }
     }
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" data-familia="${TIPOS[id]}" data-subtipo="${subtipo}"><title>${TIPOS[id]} (${subtipo})</title>${svg.join('')}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" data-familia="${TIPOS[id]}" data-subtipo="${subtipo}" data-genero="${genero}"><title>${TIPOS[id]} (${subtipo})</title>${svg.join('')}</svg>`;
   }
 
   function gerarCriatura(tipo, opcoes) {
@@ -1114,7 +1819,7 @@
     return imagem;
   }
 
-  const api = { gerarCriatura, gerarSVG, TIPOS, SUBTIPOS };
+  const api = { gerarCriatura, gerarSVG, TIPOS, SUBTIPOS, NOMES_SUBTIPOS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else Object.assign(raiz, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
