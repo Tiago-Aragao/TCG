@@ -12,16 +12,23 @@ type ChaveDeck = keyof typeof decksParaTeste;
 type Iniciativa = "aleatoria" | "humano" | "bot";
 type FaseInterface = "setup" | "mulligan" | "jogo";
 type LadoVisual = "humano" | "bot";
+type TipoAtaqueVisual = CartaCriatura["tipoAtaque"];
+type TipoFeedback = "neutro" | "ataque" | "ataque-direto" | "destruicao" | "impedido" | "fim";
 
-const DURACAO_PROJETIL_MS = 480;
-const DURACAO_IMPACTO_MS = 220;
-const PAUSA_ENTRE_EVENTOS_MS = 180;
-const PAUSA_ACOES_BOT_MS = 420;
+const DURACAO_MELEE_MS = 440;
+const DURACAO_DISTANCIA_MS = 460;
+const DURACAO_MAGIA_MS = 540;
+const DURACAO_IMPACTO_MS = 300;
+const PAUSA_ENTRE_EVENTOS_MS = 210;
+const PAUSA_ACOES_BOT_MS = 520;
+const LIMITE_HISTORICO_VISUAL = 90;
+const MOVIMENTO_REDUZIDO = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-const app = document.querySelector<HTMLDivElement>("#app");
-if (app === null) {
+const appEncontrado = document.querySelector<HTMLDivElement>("#app");
+if (appEncontrado === null) {
     throw new Error("Elemento #app não encontrado.");
 }
+const app: HTMLDivElement = appEncontrado;
 
 let faseInterface: FaseInterface = "setup";
 let partida: Partida | null = null;
@@ -31,6 +38,7 @@ let bot: BotSimples | null = null;
 let indiceCartaSelecionada: number | null = null;
 let modoSacrificioCampo = false;
 let processando = false;
+let ajudaAberta = false;
 let mensagemInterface = "";
 let historico: string[] = [];
 
@@ -52,41 +60,79 @@ function renderizar(): void {
 
 function renderizarSetup(): void {
     const opcoesDeck = Object.entries(decksParaTeste)
-        .map(([chave, deck]) => `<option value="${chave}">${deck.nome}</option>`)
+        .map(([chave, deck]) => `<option value="${chave}">${escaparHtml(deck.nome)} · ${deck.tamanhoDeck()} cartas</option>`)
         .join("");
 
     app.innerHTML = `
         <main class="setup-shell">
             <section class="setup-card panel">
-                <div class="eyebrow">TCG — Playtest v0.1</div>
-                <h1>Partida de teste</h1>
-                <p class="setup-copy">
-                    Escolha seu deck e o deck adversário. O oponente usa um bot simples,
-                    criado apenas para colocar criaturas em campo e permitir o playtest.
-                </p>
+                <div class="setup-brand-row">
+                    <div>
+                        <span class="product-badge">PLAYTEST</span>
+                        <span class="build-label">TCG · Protótipo jogável</span>
+                    </div>
+                    <span class="setup-status"><i></i> Online no navegador</span>
+                </div>
+
+                <div class="setup-hero">
+                    <p class="eyebrow">Prepare seu confronto</p>
+                    <h1>Entre na arena.</h1>
+                    <p class="setup-copy">
+                        Escolha seu deck, defina o adversário e jogue uma partida completa.
+                        Não precisa conhecer outros TCGs: as regras essenciais estão explicadas aqui.
+                    </p>
+                </div>
+
+                <div class="setup-steps" aria-label="Como iniciar">
+                    <div class="setup-step"><b>1</b><span><strong>Escolha seu deck</strong><small>Seu estilo para esta partida.</small></span></div>
+                    <div class="setup-step"><b>2</b><span><strong>Escolha o oponente</strong><small>Use outro deck para comparar estratégias.</small></span></div>
+                    <div class="setup-step"><b>3</b><span><strong>Jogue e observe</strong><small>O combate é resolvido automaticamente.</small></span></div>
+                </div>
 
                 <div class="setup-grid">
-                    <label>
-                        <span>Seu deck</span>
+                    <label class="field-card">
+                        <span class="field-label">Seu deck</span>
                         <select id="deck-humano">${opcoesDeck}</select>
+                        <small>As cartas deste deck formarão sua mão e seu baralho.</small>
                     </label>
 
-                    <label>
-                        <span>Deck do bot</span>
+                    <label class="field-card">
+                        <span class="field-label">Deck do oponente</span>
                         <select id="deck-bot">${opcoesDeck}</select>
+                        <small>O oponente será controlado automaticamente.</small>
                     </label>
 
-                    <label>
-                        <span>Quem começa</span>
+                    <label class="field-card">
+                        <span class="field-label">Quem joga primeiro?</span>
                         <select id="iniciativa">
-                            <option value="aleatoria">Aleatório</option>
-                            <option value="humano">Você</option>
-                            <option value="bot">Bot</option>
+                            <option value="aleatoria">Sortear automaticamente</option>
+                            <option value="humano">Eu começo</option>
+                            <option value="bot">Oponente começa</option>
                         </select>
+                        <small>O primeiro turno não pode causar dano direto ao jogador.</small>
                     </label>
                 </div>
 
-                <button id="iniciar-partida" class="btn btn-primary btn-large">Iniciar partida</button>
+                <div class="setup-actions">
+                    <button id="iniciar-partida" class="btn btn-primary btn-large">
+                        <span>Iniciar partida</span><span aria-hidden="true">→</span>
+                    </button>
+                </div>
+
+                <details class="rules-card">
+                    <summary>Como funciona esta versão?</summary>
+                    <div class="rules-content">
+                        <div class="rule-item"><b>01</b><p><strong>Jogue criaturas.</strong> Selecione uma carta da mão e depois uma casa vazia do seu campo.</p></div>
+                        <div class="rule-item"><b>02</b><p><strong>Posicione corretamente.</strong> Corpo a corpo ataca da frente; distância ataca do fundo; magia funciona nas duas linhas.</p></div>
+                        <div class="rule-item"><b>03</b><p><strong>Use o sacrifício.</strong> Uma vez por turno, sacrifique para gerar mana extra e antecipar jogadas.</p></div>
+                        <div class="rule-item"><b>04</b><p><strong>Encerre o turno.</strong> O combate acontece sozinho, seguindo a ordem e os alvos definidos pelas regras.</p></div>
+                    </div>
+                    <div class="type-legend">
+                        ${htmlLegendaTipo("corpo-a-corpo")}
+                        ${htmlLegendaTipo("distancia")}
+                        ${htmlLegendaTipo("magico")}
+                    </div>
+                </details>
             </section>
         </main>
     `;
@@ -113,7 +159,7 @@ function prepararPartida(chaveHumano: ChaveDeck, chaveBot: ChaveDeck, iniciativa
     const deckBot = prepararDeck(decksParaTeste[chaveBot]);
 
     humano = new Jogador("Você", deckHumano);
-    botJogador = new Jogador("Bot", deckBot);
+    botJogador = new Jogador("Oponente", deckBot);
 
     const humanoComeca = iniciativa === "humano"
         || (iniciativa === "aleatoria" && Math.random() < 0.5);
@@ -125,13 +171,14 @@ function prepararPartida(chaveHumano: ChaveDeck, chaveBot: ChaveDeck, iniciativa
     bot = new BotSimples(botJogador);
     historico = [
         `Você escolheu o deck ${deckHumano.nome}.`,
-        `O Bot usa o deck ${deckBot.nome}.`,
-        `${humanoComeca ? "Você" : "Bot"} começa a partida.`
+        `O oponente usa o deck ${deckBot.nome}.`,
+        `${humanoComeca ? "Você" : "Oponente"} começa a partida.`
     ];
     mensagemInterface = "";
     indiceCartaSelecionada = null;
     modoSacrificioCampo = false;
     processando = false;
+    ajudaAberta = false;
 
     partida.iniciarPartida();
     faseInterface = "mulligan";
@@ -150,17 +197,30 @@ function renderizarMulligan(): void {
     app.innerHTML = `
         <main class="mulligan-shell">
             <section class="mulligan-card panel">
-                <div class="eyebrow">Mão inicial</div>
-                <h1>Mulligan</h1>
-                <p>Você pode trocar toda a sua mão uma única vez.</p>
+                <div class="mulligan-heading">
+                    <div>
+                        <span class="product-badge">MÃO INICIAL</span>
+                        <p class="eyebrow">Antes do primeiro turno</p>
+                        <h1>Quer trocar sua mão?</h1>
+                    </div>
+                    <div class="mulligan-help">
+                        <strong>Mulligan</strong>
+                        <span>É apenas o nome dado à troca da mão inicial. Você pode fazer isso uma única vez.</span>
+                    </div>
+                </div>
+
+                <p class="mulligan-copy">
+                    Analise as cinco cartas abaixo. Se elas parecem caras demais ou pouco úteis para o começo,
+                    você pode trocar todas de uma vez. Caso contrário, mantenha e comece a partida.
+                </p>
 
                 <div class="hand hand-mulligan">
                     ${humano!.mao.map((carta, indice) => htmlCartaMao(carta, indice, false)).join("")}
                 </div>
 
                 <div class="mulligan-actions">
-                    <button id="fazer-mulligan" class="btn btn-secondary">Trocar a mão</button>
-                    <button id="manter-mao" class="btn btn-primary">Manter e jogar</button>
+                    <button id="fazer-mulligan" class="btn btn-secondary btn-large">Trocar todas as cartas</button>
+                    <button id="manter-mao" class="btn btn-primary btn-large">Ficar com esta mão</button>
                 </div>
             </section>
         </main>
@@ -184,13 +244,22 @@ function renderizarMulliganAposTroca(): void {
     app.innerHTML = `
         <main class="mulligan-shell">
             <section class="mulligan-card panel">
-                <div class="eyebrow">Nova mão</div>
-                <h1>Mulligan realizado</h1>
+                <div class="mulligan-heading">
+                    <div>
+                        <span class="product-badge">NOVA MÃO</span>
+                        <p class="eyebrow">Mulligan concluído</p>
+                        <h1>Estas são suas novas cartas.</h1>
+                    </div>
+                </div>
+
+                <p class="mulligan-copy">A troca já foi usada. Agora esta será sua mão inicial para a partida.</p>
+
                 <div class="hand hand-mulligan">
                     ${humano!.mao.map((carta, indice) => htmlCartaMao(carta, indice, false)).join("")}
                 </div>
+
                 <div class="mulligan-actions">
-                    <button id="continuar-apos-mulligan" class="btn btn-primary">Começar partida</button>
+                    <button id="continuar-apos-mulligan" class="btn btn-primary btn-large">Começar partida</button>
                 </div>
             </section>
         </main>
@@ -221,14 +290,14 @@ async function continuarFluxoAutomatico(): Promise<void> {
 
         if (partida!.obterJogadorAtivo() === humano) {
             processando = false;
-            mensagemInterface = "Seu turno. Escolha suas ações e depois passe o turno.";
+            mensagemInterface = "Seu turno: selecione uma carta da mão e escolha onde colocá-la.";
             renderizar();
             return;
         }
 
-        mensagemInterface = "O Bot está jogando...";
+        mensagemInterface = "O oponente está escolhendo as jogadas...";
         renderizar();
-        await esperar(350);
+        await esperar(ajustarDuracao(420));
 
         // O bot executa apenas a Fase Principal. A interface renderiza o campo
         // antes de pedir à Partida que resolva o combate. Assim conseguimos
@@ -237,10 +306,12 @@ async function continuarFluxoAutomatico(): Promise<void> {
         historico.push(...acoes);
         indiceCartaSelecionada = null;
         modoSacrificioCampo = false;
-        mensagemInterface = "O Bot terminou as ações. Combate...";
+        mensagemInterface = "Jogadas concluídas. Preparando o combate...";
         renderizar();
-        await esperar(PAUSA_ACOES_BOT_MS);
+        await esperar(ajustarDuracao(PAUSA_ACOES_BOT_MS));
 
+        const turnoDoCombate = partida!.turnoAtual;
+        registrarSeparadorCombate(turnoDoCombate, "Oponente");
         const eventos = partida!.passarTurno();
         await reproduzirEventosCombate(eventos, "bot");
         renderizar();
@@ -249,7 +320,7 @@ async function continuarFluxoAutomatico(): Promise<void> {
             break;
         }
 
-        await esperar(350);
+        await esperar(ajustarDuracao(420));
     }
 
     processando = false;
@@ -263,53 +334,61 @@ function renderizarJogo(): void {
     const ativo = partida!.obterJogadorAtivo();
     const turnoHumano = ativo === humano && partida!.estado === "FasePrincipal";
     const controlesAtivos = turnoHumano && !processando;
+    const historicoVisivel = historico.slice(-LIMITE_HISTORICO_VISUAL);
 
     app.innerHTML = `
         <main class="game-shell">
             <header class="topbar panel">
-                <div>
-                    <span class="eyebrow">Playtest v0.1</span>
-                    <strong>Turno ${partida!.turnoAtual}</strong>
+                <div class="topbar-brand">
+                    <span class="product-badge compact">PLAYTEST</span>
+                    <div>
+                        <strong>Turno ${partida!.turnoAtual}</strong>
+                        <span>Combate automático</span>
+                    </div>
                 </div>
+
                 <div class="turn-pill ${turnoHumano ? "is-player" : "is-bot"}">
-                    ${partida!.estado === "Encerrada" ? "Fim de jogo" : `Turno: ${ativo.nome}`}
+                    <span class="turn-dot"></span>
+                    ${partida!.estado === "Encerrada"
+                        ? "Fim da partida"
+                        : turnoHumano
+                            ? "Seu turno"
+                            : "Turno do oponente"}
                 </div>
-                <button id="nova-partida-topo" class="btn btn-ghost">Nova partida</button>
+
+                <div class="topbar-actions">
+                    <button id="ajuda-jogo" class="btn btn-ghost btn-compact">Como jogar</button>
+                    <button id="nova-partida-topo" class="btn btn-ghost btn-compact">Nova partida</button>
+                </div>
             </header>
 
-            <section class="battlefield panel">
+            <section class="battlefield panel" aria-label="Campo de batalha">
                 <div id="combat-feedback" class="combat-feedback" aria-live="polite"></div>
+
                 ${htmlCabecalhoJogador(botJogador!, false)}
                 ${htmlTabuleiro(botJogador!, false, false)}
 
                 <div class="combat-divider">
-                    <span>Campo de batalha</span>
+                    <span class="combat-divider-icon">⚔</span>
+                    <span>Resolução de combate</span>
                 </div>
 
                 ${htmlTabuleiro(humano!, true, controlesAtivos)}
                 ${htmlCabecalhoJogador(humano!, true)}
             </section>
 
-            <section class="lower-grid">
-                <aside class="panel log-panel">
-                    <div class="panel-title-row">
-                        <h2>Eventos</h2>
-                        <span>${historico.length}</span>
-                    </div>
-                    <div class="event-log" id="event-log">
-                        ${historico.length === 0
-                            ? '<p class="muted">A partida ainda não gerou eventos.</p>'
-                            : historico.map(item => `<p>${escaparHtml(item)}</p>`).join("")}
-                    </div>
-                </aside>
-
+            <section class="play-area-grid">
                 <section class="panel hand-panel">
-                    <div class="panel-title-row">
+                    <div class="panel-title-row hand-title-row">
                         <div>
+                            <span class="section-kicker">SUAS OPÇÕES</span>
                             <h2>Sua mão</h2>
-                            <span class="muted">${humano!.mao.length} cartas · Deck: ${humano!.deck.tamanhoDeck()}</span>
+                            <span class="muted">${humano!.mao.length} cartas na mão · ${humano!.deck.tamanhoDeck()} restantes no deck</span>
                         </div>
-                        <div class="mana-large">◆ ${humano!.mostrarMana}</div>
+                        <div class="mana-display" aria-label="Mana disponível: ${humano!.mostrarMana}">
+                            <span class="mana-symbol" aria-hidden="true">◆</span>
+                            <span class="mana-copy"><small>MANA</small><strong>${humano!.mostrarMana}</strong></span>
+                        </div>
                     </div>
 
                     <div class="hand" id="mao-jogador">
@@ -318,23 +397,57 @@ function renderizarJogo(): void {
 
                     <div class="action-bar">
                         <div class="action-status">
-                            ${htmlMensagemAcao(controlesAtivos)}
+                            <span class="action-status-label">O QUE FAZER AGORA</span>
+                            <p>${htmlMensagemAcao(controlesAtivos)}</p>
                         </div>
                         <div class="action-buttons">
                             <button id="sacrificar-mao" class="btn btn-secondary" ${!controlesAtivos || indiceCartaSelecionada === null ? "disabled" : ""}>
-                                Sacrificar carta da mão
+                                <span>Sacrificar carta selecionada</span>
+                                <small>gera mana extra</small>
                             </button>
                             <button id="sacrificar-campo" class="btn ${modoSacrificioCampo ? "btn-warning" : "btn-secondary"}" ${!controlesAtivos ? "disabled" : ""}>
-                                ${modoSacrificioCampo ? "Clique numa criatura" : "Sacrificar do campo"}
+                                <span>${modoSacrificioCampo ? "Escolha uma criatura" : "Sacrificar do campo"}</span>
+                                <small>${modoSacrificioCampo ? "clique no campo" : "+1 mana"}</small>
                             </button>
-                            <button id="passar-turno" class="btn btn-primary" ${!controlesAtivos ? "disabled" : ""}>
-                                Passar turno
+                            <button id="passar-turno" class="btn btn-primary btn-end-turn" ${!controlesAtivos ? "disabled" : ""}>
+                                <span>Encerrar turno</span>
+                                <small>resolver combate →</small>
                             </button>
                         </div>
                     </div>
                 </section>
+
+                <aside class="side-column">
+                    <section class="panel quick-guide-panel">
+                        <div class="panel-title-row compact-row">
+                            <div>
+                                <span class="section-kicker">LEITURA RÁPIDA</span>
+                                <h2>Posicionamento</h2>
+                            </div>
+                        </div>
+                        <div class="mini-legend-list">
+                            ${htmlLegendaTipo("corpo-a-corpo", true)}
+                            ${htmlLegendaTipo("distancia", true)}
+                            ${htmlLegendaTipo("magico", true)}
+                        </div>
+                        <p class="sacrifice-note"><strong>Sacrifício:</strong> no máximo uma vez por turno. Criatura da mão gera +2 mana; criatura do campo gera +1.</p>
+                    </section>
+
+                    <details class="panel log-panel" open>
+                        <summary class="log-summary">
+                            <span><span class="section-kicker">PARTIDA</span><strong>Histórico</strong></span>
+                            <span class="log-count">${historico.length}</span>
+                        </summary>
+                        <div class="event-log" id="event-log">
+                            ${historicoVisivel.length === 0
+                                ? '<p class="muted">A partida ainda não gerou eventos.</p>'
+                                : historicoVisivel.map(item => `<p class="${item.startsWith("—") ? "log-separator" : ""}">${escaparHtml(item)}</p>`).join("")}
+                        </div>
+                    </details>
+                </aside>
             </section>
 
+            ${ajudaAberta ? htmlAjuda() : ""}
             ${partida!.estado === "Encerrada" ? htmlFimDeJogo() : ""}
         </main>
     `;
@@ -349,17 +462,28 @@ function renderizarJogo(): void {
 
 function htmlCabecalhoJogador(jogador: Jogador, ehHumano: boolean): string {
     const nomeDeck = jogador.deck.nome;
+    const lado = ehHumano ? "humano" : "bot";
+    const titulo = ehHumano ? "VOCÊ" : "OPONENTE";
+
     return `
-        <div id="player-strip-${ehHumano ? "humano" : "bot"}" class="player-strip ${ehHumano ? "player-strip-human" : "player-strip-bot"}">
-            <div>
+        <div id="player-strip-${lado}" class="player-strip ${ehHumano ? "player-strip-human" : "player-strip-bot"}">
+            <div class="player-identity">
+                <span class="player-role">${titulo}</span>
                 <strong>${escaparHtml(jogador.nome)}</strong>
-                <span>${escaparHtml(nomeDeck)}</span>
+                <span class="deck-name">${escaparHtml(nomeDeck)}</span>
             </div>
-            <div class="player-stats">
-                <span id="hp-${ehHumano ? "humano" : "bot"}" class="stat hp">♥ ${jogador.vidaAtual}</span>
-                <span class="stat mana">◆ ${jogador.mostrarMana}</span>
-                <span class="stat cards">▣ ${ehHumano ? jogador.mao.length : `${jogador.mao.length} na mão`}</span>
-                <span class="stat deck">Deck ${jogador.deck.tamanhoDeck()}</span>
+
+            <div class="player-resources">
+                <div id="hp-${lado}" class="resource-box hp-resource">
+                    <span class="resource-icon" aria-hidden="true">♥</span>
+                    <span><small>VIDA</small><strong data-vida-jogador>${jogador.vidaAtual}</strong></span>
+                </div>
+                <div class="resource-box mana-resource-small">
+                    <span class="resource-icon" aria-hidden="true">◆</span>
+                    <span><small>MANA</small><strong>${jogador.mostrarMana}</strong></span>
+                </div>
+                <div class="resource-meta"><small>MÃO</small><strong>${jogador.mao.length}</strong></div>
+                <div class="resource-meta"><small>DECK</small><strong>${jogador.deck.tamanhoDeck()}</strong></div>
             </div>
         </div>
     `;
@@ -385,10 +509,11 @@ function htmlTabuleiro(jogador: Jogador, ehHumano: boolean, interativo: boolean)
 
 function htmlLinhaTabuleiro(jogador: Jogador, linha: Linha, interativo: boolean): string {
     const colunas = [Coluna.Esquerda, Coluna.Meio, Coluna.Direita];
+    const descricao = linha === "frente" ? "corpo a corpo" : "distância";
 
     return `
-        <div class="board-row">
-            <span class="row-label">${linha === "frente" ? "Frente" : "Fundo"}</span>
+        <div class="board-row ${linha === "frente" ? "row-front" : "row-back"}">
+            <span class="row-label"><strong>${linha === "frente" ? "Frente" : "Fundo"}</strong><small>${descricao}</small></span>
             <div class="slots">
                 ${colunas.map(coluna => htmlSlot(jogador, { linha, coluna }, interativo)).join("")}
             </div>
@@ -402,18 +527,34 @@ function htmlSlot(jogador: Jogador, posicao: Posicao, interativo: boolean): stri
     const classeSacrificio = modoSacrificioCampo && jogador === humano && criatura !== null ? "slot-sacrifice" : "";
 
     if (criatura === null) {
+        const orientacao = posicao.linha === "frente" ? "Corpo a corpo" : "Distância";
         return `
-            <button class="board-slot empty ${classeInteracao}" data-linha="${posicao.linha}" data-coluna="${posicao.coluna}" ${interativo ? "" : "disabled"}>
-                <span>vazio</span>
+            <button class="board-slot empty ${classeInteracao}" data-linha="${posicao.linha}" data-coluna="${posicao.coluna}" ${interativo ? "" : "disabled"} aria-label="Espaço vazio: ${orientacao}">
+                <span class="empty-mark">+</span>
+                <span>espaço vazio</span>
             </button>
         `;
     }
 
+    const classeTipo = classeTipoAtaque(criatura.tipoAtaque);
     return `
-        <button class="board-slot creature-slot ${classeInteracao} ${classeSacrificio}" data-linha="${posicao.linha}" data-coluna="${posicao.coluna}" ${interativo ? "" : "disabled"}>
-            <span class="mini-type">${iconeTipo(criatura.tipoAtaque)}</span>
-            <strong>${escaparHtml(criatura.nome)}</strong>
-            <span class="mini-stats"><b>⚔ ${criatura.ataque}</b><b>♥ <span data-vida-criatura>${criatura.vida}</span></b></span>
+        <button
+            class="board-slot creature-slot ${classeInteracao} ${classeSacrificio} ${classeTipo}"
+            data-linha="${posicao.linha}"
+            data-coluna="${posicao.coluna}"
+            data-tipo-ataque="${criatura.tipoAtaque}"
+            ${interativo ? "" : "disabled"}
+            aria-label="${escaparHtml(criatura.nome)}, ataque ${criatura.ataque}, vida ${criatura.vida}"
+        >
+            <span class="mini-type-badge">${iconeTipo(criatura.tipoAtaque)}</span>
+            <span class="creature-copy">
+                <strong>${escaparHtml(criatura.nome)}</strong>
+                <small>${nomeTipo(criatura.tipoAtaque)}</small>
+            </span>
+            <span class="mini-stats">
+                <b class="attack-stat"><small>ATQ</small>${criatura.ataque}</b>
+                <b class="life-stat"><small>VIDA</small><span data-vida-criatura>${criatura.vida}</span></b>
+            </span>
         </button>
     `;
 }
@@ -422,25 +563,27 @@ function htmlCartaMao(carta: Carta, indice: number, interativo: boolean): string
     const selecionada = indice === indiceCartaSelecionada;
 
     if (carta instanceof CartaCriatura) {
+        const classeTipo = classeTipoAtaque(carta.tipoAtaque);
         return `
-            <button class="game-card ${selecionada ? "selected" : ""}" data-indice-carta="${indice}" ${interativo ? "" : "disabled"}>
-                <span class="card-cost">${carta.custoMana}</span>
-                <span class="card-type-icon">${iconeTipo(carta.tipoAtaque)}</span>
+            <button class="game-card ${classeTipo} ${selecionada ? "selected" : ""}" data-indice-carta="${indice}" ${interativo ? "" : "disabled"} aria-pressed="${selecionada}">
+                <span class="card-cost" title="Custo de mana"><small>MANA</small>${carta.custoMana}</span>
+                <span class="card-type-pill">${iconeTipo(carta.tipoAtaque)} ${nomeTipo(carta.tipoAtaque)}</span>
+                <span class="card-art-placeholder" aria-hidden="true"><i>${iconeTipo(carta.tipoAtaque)}</i></span>
                 <strong class="card-name">${escaparHtml(carta.nome)}</strong>
-                <span class="card-type">${nomeTipo(carta.tipoAtaque)}</span>
                 <span class="card-stats">
-                    <b>⚔ ${carta.ataque}</b>
-                    <b>♥ ${carta.vida}</b>
+                    <b class="attack-stat"><small>ATQ</small>${carta.ataque}</b>
+                    <b class="life-stat"><small>VIDA</small>${carta.vida}</b>
                 </span>
             </button>
         `;
     }
 
     return `
-        <button class="game-card ${selecionada ? "selected" : ""}" data-indice-carta="${indice}" ${interativo ? "" : "disabled"}>
-            <span class="card-cost">${carta.custoMana}</span>
+        <button class="game-card generic-card ${selecionada ? "selected" : ""}" data-indice-carta="${indice}" ${interativo ? "" : "disabled"} aria-pressed="${selecionada}">
+            <span class="card-cost" title="Custo de mana"><small>MANA</small>${carta.custoMana}</span>
+            <span class="card-art-placeholder" aria-hidden="true"><i>◇</i></span>
             <strong class="card-name">${escaparHtml(carta.nome)}</strong>
-            <span class="card-type">${escaparHtml(carta.tipoCarta)}</span>
+            <span class="card-type-pill">${escaparHtml(carta.tipoCarta)}</span>
         </button>
     `;
 }
@@ -451,33 +594,82 @@ function htmlMensagemAcao(controlesAtivos: boolean): string {
     }
 
     if (!controlesAtivos) {
-        return escaparHtml(mensagemInterface || "Aguardando...");
+        return escaparHtml(mensagemInterface || "Aguardando o próximo passo...");
     }
 
     if (modoSacrificioCampo) {
-        return "Clique em uma criatura do seu campo para sacrificá-la e ganhar +1 mana.";
+        return "Escolha uma criatura do seu campo. Ela será removida e você receberá +1 mana.";
     }
 
     if (indiceCartaSelecionada !== null) {
         const carta = humano!.mao[indiceCartaSelecionada];
         return carta
-            ? `${escaparHtml(carta.nome)} selecionada. Clique em um espaço vazio para jogar ou sacrifique a carta.`
+            ? `<strong>${escaparHtml(carta.nome)}</strong> selecionada. Agora clique em um espaço vazio do campo para jogar, ou use o botão de sacrifício.`
             : "Selecione uma carta.";
     }
 
-    return escaparHtml(mensagemInterface || "Selecione uma carta da mão.");
+    return escaparHtml(mensagemInterface || "Selecione uma carta da mão para começar sua jogada.");
+}
+
+function htmlAjuda(): string {
+    return `
+        <div class="help-backdrop" role="dialog" aria-modal="true" aria-label="Como jogar">
+            <section class="help-modal panel">
+                <div class="help-header">
+                    <div>
+                        <span class="product-badge">GUIA RÁPIDO</span>
+                        <h2>Como jogar esta versão</h2>
+                    </div>
+                    <button id="fechar-ajuda" class="btn btn-ghost btn-icon" aria-label="Fechar ajuda">×</button>
+                </div>
+
+                <div class="help-grid">
+                    <article><b>1</b><div><strong>Veja sua mana.</strong><p>O custo da carta precisa caber na mana disponível naquele turno.</p></div></article>
+                    <article><b>2</b><div><strong>Selecione uma carta.</strong><p>Depois clique em uma das seis posições do seu campo para jogá-la.</p></div></article>
+                    <article><b>3</b><div><strong>Respeite as linhas.</strong><p>Corpo a corpo funciona na frente; distância no fundo; magia em qualquer uma.</p></div></article>
+                    <article><b>4</b><div><strong>Considere sacrificar.</strong><p>Uma vez por turno você pode trocar uma carta ou criatura por mana extra.</p></div></article>
+                    <article><b>5</b><div><strong>Encerre o turno.</strong><p>As criaturas atacam automaticamente e a interface mostra a ordem dos ataques.</p></div></article>
+                    <article><b>6</b><div><strong>Reduza a vida adversária.</strong><p>Quando não há criaturas defendendo, seus atacantes podem atingir o jogador diretamente.</p></div></article>
+                </div>
+
+                <div class="type-legend help-legend">
+                    ${htmlLegendaTipo("corpo-a-corpo")}
+                    ${htmlLegendaTipo("distancia")}
+                    ${htmlLegendaTipo("magico")}
+                </div>
+
+                <button id="entendi-ajuda" class="btn btn-primary btn-large">Entendi, voltar à partida</button>
+            </section>
+        </div>
+    `;
 }
 
 function htmlFimDeJogo(): string {
-    const vencedor = humano!.estaVivo() ? "Você venceu!" : "O Bot venceu.";
+    const venceu = humano!.estaVivo();
     return `
         <div class="game-over-backdrop">
-            <div class="game-over panel">
+            <div class="game-over panel ${venceu ? "victory" : "defeat"}">
+                <span class="result-icon" aria-hidden="true">${venceu ? "◆" : "×"}</span>
                 <div class="eyebrow">Partida encerrada</div>
-                <h2>${vencedor}</h2>
-                <p>Vida final: Você ${humano!.vidaAtual} · Bot ${botJogador!.vidaAtual}</p>
+                <h2>${venceu ? "Você venceu!" : "O oponente venceu."}</h2>
+                <p>Vida final: <strong>Você ${humano!.vidaAtual}</strong> · <strong>Oponente ${botJogador!.vidaAtual}</strong></p>
                 <button id="nova-partida-overlay" class="btn btn-primary btn-large">Jogar novamente</button>
             </div>
+        </div>
+    `;
+}
+
+function htmlLegendaTipo(tipo: TipoAtaqueVisual, compacto = false): string {
+    const descricao = tipo === "corpo-a-corpo"
+        ? "Ataca pela linha da frente"
+        : tipo === "distancia"
+            ? "Ataca pela linha de fundo"
+            : "Ataca de qualquer linha";
+
+    return `
+        <div class="type-legend-item ${classeTipoAtaque(tipo)} ${compacto ? "compact" : ""}">
+            <span class="type-legend-icon">${iconeTipo(tipo)}</span>
+            <span><strong>${nomeTipo(tipo)}</strong><small>${descricao}</small></span>
         </div>
     `;
 }
@@ -527,12 +719,24 @@ function conectarEventosDoJogo(controlesAtivos: boolean): void {
     });
 
     obterElemento<HTMLButtonElement>("nova-partida-topo").addEventListener("click", voltarAoSetup);
+    obterElemento<HTMLButtonElement>("ajuda-jogo").addEventListener("click", () => {
+        ajudaAberta = true;
+        renderizar();
+    });
+
     document.querySelector<HTMLButtonElement>("#nova-partida-overlay")?.addEventListener("click", voltarAoSetup);
+    document.querySelector<HTMLButtonElement>("#fechar-ajuda")?.addEventListener("click", fecharAjuda);
+    document.querySelector<HTMLButtonElement>("#entendi-ajuda")?.addEventListener("click", fecharAjuda);
+}
+
+function fecharAjuda(): void {
+    ajudaAberta = false;
+    renderizar();
 }
 
 function jogarCartaSelecionada(posicao: Posicao): void {
     if (indiceCartaSelecionada === null) {
-        mensagemInterface = "Selecione uma carta da mão antes de escolher a posição.";
+        mensagemInterface = "Primeiro selecione uma carta da sua mão; depois escolha uma posição vazia.";
         renderizar();
         return;
     }
@@ -549,7 +753,7 @@ function jogarCartaSelecionada(posicao: Posicao): void {
     if (resultado === "Sucesso") {
         historico.push(`Você jogou ${carta.nome} em ${posicao.linha}/${nomeColuna(posicao.coluna)}.`);
         indiceCartaSelecionada = null;
-        mensagemInterface = "Carta jogada com sucesso.";
+        mensagemInterface = `${carta.nome} entrou no campo. Você pode jogar novamente, sacrificar ou encerrar o turno.`;
     } else {
         mensagemInterface = mensagemResultadoJogada(resultado);
     }
@@ -576,7 +780,7 @@ function sacrificarCartaSelecionada(): void {
         const manaGerada = humano!.mostrarMana - manaAntes;
         historico.push(`Você sacrificou ${carta.nome} da mão e ganhou +${manaGerada} mana.`);
         indiceCartaSelecionada = null;
-        mensagemInterface = `Sacrifício realizado. +${manaGerada} mana.`;
+        mensagemInterface = `Sacrifício realizado: +${manaGerada} mana disponível neste turno.`;
     } else {
         mensagemInterface = mensagemResultadoSacrificio(resultado);
     }
@@ -587,7 +791,7 @@ function sacrificarCartaSelecionada(): void {
 function sacrificarDoCampo(posicao: Posicao): void {
     const criatura = humano!.tabuleiro.obterCriatura(posicao.linha, posicao.coluna);
     if (criatura === null) {
-        mensagemInterface = "Não existe criatura nessa posição.";
+        mensagemInterface = "Não existe criatura nessa posição para sacrificar.";
         renderizar();
         return;
     }
@@ -598,7 +802,7 @@ function sacrificarDoCampo(posicao: Posicao): void {
     if (resultado === "Sucesso") {
         historico.push(`Você sacrificou ${nome} do campo e ganhou +1 mana.`);
         modoSacrificioCampo = false;
-        mensagemInterface = "Criatura sacrificada. +1 mana.";
+        mensagemInterface = `${nome} foi sacrificado: +1 mana disponível neste turno.`;
     } else {
         mensagemInterface = mensagemResultadoSacrificio(resultado);
     }
@@ -610,12 +814,14 @@ async function passarTurnoHumano(): Promise<void> {
     processando = true;
     indiceCartaSelecionada = null;
     modoSacrificioCampo = false;
-    mensagemInterface = "Resolvendo combate...";
+    mensagemInterface = "Combate em andamento...";
 
     // Renderizamos antes de resolver o combate. O DOM permanece mostrando
     // o estado pré-combate enquanto a Partida produz todos os eventos.
     renderizar();
 
+    const turnoDoCombate = partida!.turnoAtual;
+    registrarSeparadorCombate(turnoDoCombate, "Você");
     const eventos = partida!.passarTurno();
     await reproduzirEventosCombate(eventos, "humano");
     renderizar();
@@ -626,17 +832,16 @@ async function passarTurnoHumano(): Promise<void> {
         return;
     }
 
-    await esperar(300);
+    await esperar(ajustarDuracao(340));
     await continuarFluxoAutomatico();
 }
-
 
 async function reproduzirEventosCombate(eventos: TiposEventos[], ladoAtacante: LadoVisual): Promise<void> {
     const ladoDefensor: LadoVisual = ladoAtacante === "humano" ? "bot" : "humano";
 
     if (eventos.length === 0) {
-        mostrarFeedbackCombate("Nenhum ataque neste combate.", "neutro");
-        await esperar(450);
+        mostrarFeedbackCombate("Nenhuma criatura atacou neste combate.", "neutro");
+        await esperar(ajustarDuracao(520));
         limparFeedbackCombate();
         return;
     }
@@ -648,15 +853,16 @@ async function reproduzirEventosCombate(eventos: TiposEventos[], ladoAtacante: L
             case "AtaqueCriatura": {
                 const origem = obterSlotVisual(ladoAtacante, evento.posicaoAtacante);
                 const destino = obterSlotVisual(ladoDefensor, evento.posicaoDefensor);
+                const tipoAtaque = obterTipoAtaqueVisual(origem);
 
                 mostrarFeedbackCombate(
-                    `${evento.nomeAtacante} → ${evento.nomeDefensor} · ${evento.danoCausado} de dano`,
+                    `${iconeTipo(tipoAtaque)} ${evento.nomeAtacante} atacou ${evento.nomeDefensor} · ${evento.danoCausado} de dano`,
                     "ataque"
                 );
 
-                await animarAtaque(origem, destino);
+                await animarAtaque(origem, destino, tipoAtaque);
                 atualizarVidaCriaturaVisual(destino, evento.vidaAposDano);
-                await animarImpacto(destino);
+                await animarImpacto(destino, tipoAtaque);
                 break;
             }
 
@@ -670,23 +876,24 @@ async function reproduzirEventosCombate(eventos: TiposEventos[], ladoAtacante: L
             case "AtaqueDireto": {
                 const origem = obterSlotVisual(ladoAtacante, evento.posicaoAtacante);
                 const destino = document.querySelector<HTMLElement>(`#hp-${ladoDefensor}`);
+                const tipoAtaque = obterTipoAtaqueVisual(origem);
 
                 mostrarFeedbackCombate(
-                    `${evento.nomeAtacante} → ${evento.nomeDefensor} · ${evento.danoCausado} de dano direto`,
+                    `${iconeTipo(tipoAtaque)} ${evento.nomeAtacante} atingiu ${evento.nomeDefensor} diretamente · ${evento.danoCausado} de dano`,
                     "ataque-direto"
                 );
 
-                await animarAtaque(origem, destino);
+                await animarAtaque(origem, destino, tipoAtaque);
                 atualizarVidaJogadorVisual(ladoDefensor, evento.vidaAposDano);
-                await animarImpacto(destino);
+                await animarImpacto(destino, tipoAtaque);
                 break;
             }
 
             case "AtaqueImpedido": {
                 const origem = obterSlotVisual(ladoAtacante, evento.posicaoAtacante);
                 const texto = evento.motivo === "LinhaInvalida"
-                    ? `${evento.nomeCriatura} não pode atacar dessa linha`
-                    : `${evento.nomeCriatura} não pode atacar diretamente no turno 1`;
+                    ? `${evento.nomeCriatura} está na linha errada e não atacou`
+                    : `${evento.nomeCriatura} não pode atacar o jogador diretamente no turno 1`;
 
                 mostrarFeedbackCombate(texto, "impedido");
                 await animarAtaqueImpedido(origem);
@@ -695,11 +902,11 @@ async function reproduzirEventosCombate(eventos: TiposEventos[], ladoAtacante: L
 
             case "PartidaEncerrada":
                 mostrarFeedbackCombate(`${evento.vencedorNome} venceu a partida`, "fim");
-                await esperar(650);
+                await esperar(ajustarDuracao(760));
                 break;
         }
 
-        await esperar(PAUSA_ENTRE_EVENTOS_MS);
+        await esperar(ajustarDuracao(PAUSA_ENTRE_EVENTOS_MS));
     }
 
     limparFeedbackCombate();
@@ -712,78 +919,231 @@ function obterSlotVisual(lado: LadoVisual, posicao: Posicao): HTMLElement | null
     );
 }
 
-async function animarAtaque(origem: HTMLElement | null, destino: HTMLElement | null): Promise<void> {
+function obterTipoAtaqueVisual(origem: HTMLElement | null): TipoAtaqueVisual {
+    const tipo = origem?.dataset.tipoAtaque;
+    if (tipo === "distancia" || tipo === "magico" || tipo === "corpo-a-corpo") {
+        return tipo;
+    }
+    return "corpo-a-corpo";
+}
+
+async function animarAtaque(
+    origem: HTMLElement | null,
+    destino: HTMLElement | null,
+    tipoAtaque: TipoAtaqueVisual
+): Promise<void> {
     if (origem === null || destino === null) {
-        await esperar(DURACAO_PROJETIL_MS);
+        await esperar(ajustarDuracao(duracaoAtaque(tipoAtaque)));
         return;
     }
 
-    origem.classList.add("is-attacking");
-    await esperar(110);
+    origem.classList.add("is-attacking", classeTipoAtaque(tipoAtaque));
 
-    const inicio = origem.getBoundingClientRect();
-    const fim = destino.getBoundingClientRect();
-    const inicioX = inicio.left + inicio.width / 2;
-    const inicioY = inicio.top + inicio.height / 2;
-    const fimX = fim.left + fim.width / 2;
-    const fimY = fim.top + fim.height / 2;
-
-    const projetil = document.createElement("div");
-    projetil.className = "attack-projectile";
-    projetil.style.left = `${inicioX}px`;
-    projetil.style.top = `${inicioY}px`;
-    document.body.appendChild(projetil);
-
-    const animacao = projetil.animate(
-        [
-            { transform: "translate(-50%, -50%) translate(0px, 0px) scale(0.75)", opacity: 0.4 },
-            { transform: `translate(-50%, -50%) translate(${fimX - inicioX}px, ${fimY - inicioY}px) scale(1.1)`, opacity: 1 }
-        ],
-        { duration: DURACAO_PROJETIL_MS, easing: "cubic-bezier(.2,.75,.25,1)", fill: "forwards" }
-    );
-
-    try {
-        await animacao.finished;
-    } catch {
-        // A animação pode ser cancelada se o navegador desmontar o elemento.
+    if (MOVIMENTO_REDUZIDO) {
+        await esperar(90);
+        origem.classList.remove("is-attacking");
+        return;
     }
 
-    projetil.remove();
+    if (tipoAtaque === "corpo-a-corpo") {
+        // Mantemos o avanço físico aprovado no playtest.
+        await animarAtaqueCorpoACorpo(origem, destino);
+    } else if (tipoAtaque === "distancia") {
+        // Ataque à distância usa uma flecha verde claramente direcional.
+        await animarAtaqueDistancia(origem, destino);
+    } else {
+        // Ataque mágico usa um orbe azul e deixa a explosão para o impacto.
+        await animarAtaqueMagico(origem, destino);
+    }
+
     origem.classList.remove("is-attacking");
 }
 
-async function animarImpacto(destino: HTMLElement | null): Promise<void> {
+async function animarAtaqueCorpoACorpo(origem: HTMLElement, destino: HTMLElement): Promise<void> {
+    const inicio = centroElemento(origem);
+    const fim = centroElemento(destino);
+    const dxTotal = fim.x - inicio.x;
+    const dyTotal = fim.y - inicio.y;
+    const distancia = Math.max(Math.hypot(dxTotal, dyTotal), 1);
+    const avanco = Math.min(38, distancia * 0.13);
+    const dx = (dxTotal / distancia) * avanco;
+    const dy = (dyTotal / distancia) * avanco;
+
+    const animacao = origem.animate(
+        [
+            { transform: "translate(0, 0) scale(1)" },
+            { transform: `translate(${dx * -0.18}px, ${dy * -0.18}px) scale(0.99)`, offset: 0.22 },
+            { transform: `translate(${dx}px, ${dy}px) scale(1.055)`, offset: 0.60 },
+            { transform: "translate(0, 0) scale(1)" }
+        ],
+        { duration: DURACAO_MELEE_MS, easing: "cubic-bezier(.22,.72,.22,1)" }
+    );
+
+    await aguardarAnimacao(animacao);
+    criarEfeitoImpacto(destino, "corpo-a-corpo");
+}
+
+async function animarAtaqueDistancia(origem: HTMLElement, destino: HTMLElement): Promise<void> {
+    const inicio = centroElemento(origem);
+    const fim = centroElemento(destino);
+    const dx = fim.x - inicio.x;
+    const dy = fim.y - inicio.y;
+    const distancia = Math.max(Math.hypot(dx, dy), 1);
+    const ux = dx / distancia;
+    const uy = dy / distancia;
+    const angulo = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    // A flecha nasce um pouco para fora da carta e termina dentro do alvo.
+    // Isso evita que o projétil pareça surgir do centro do texto.
+    const origemX = inicio.x + ux * 14;
+    const origemY = inicio.y + uy * 14;
+    const alvoX = fim.x - ux * 8;
+    const alvoY = fim.y - uy * 8;
+
+    const flecha = document.createElement("div");
+    flecha.className = "attack-projectile projectile-ranged";
+    flecha.style.left = `${origemX}px`;
+    flecha.style.top = `${origemY}px`;
+    flecha.style.setProperty("--projectile-angle", `${angulo}deg`);
+    document.body.appendChild(flecha);
+
+    const animacao = flecha.animate(
+        [
+            {
+                left: `${origemX}px`,
+                top: `${origemY}px`,
+                opacity: 0,
+                transform: `translate(-50%, -50%) rotate(${angulo}deg) scale(.80)`
+            },
+            {
+                opacity: 1,
+                transform: `translate(-50%, -50%) rotate(${angulo}deg) scale(1)`,
+                offset: 0.12
+            },
+            {
+                left: `${alvoX}px`,
+                top: `${alvoY}px`,
+                opacity: 1,
+                transform: `translate(-50%, -50%) rotate(${angulo}deg) scale(1.05)`
+            }
+        ],
+        { duration: DURACAO_DISTANCIA_MS, easing: "cubic-bezier(.18,.72,.16,1)", fill: "forwards" }
+    );
+
+    await aguardarAnimacao(animacao);
+    flecha.remove();
+}
+
+async function animarAtaqueMagico(origem: HTMLElement, destino: HTMLElement): Promise<void> {
+    const inicio = centroElemento(origem);
+    const fim = centroElemento(destino);
+    const dx = fim.x - inicio.x;
+    const dy = fim.y - inicio.y;
+    const distancia = Math.max(Math.hypot(dx, dy), 1);
+
+    // Um arco muito discreto deixa o orbe vivo sem tornar o combate espalhafatoso.
+    const perpendicularX = -dy / distancia;
+    const perpendicularY = dx / distancia;
+    const curvatura = Math.min(18, distancia * 0.045);
+    const meioX = inicio.x + dx * 0.52 + perpendicularX * curvatura;
+    const meioY = inicio.y + dy * 0.52 + perpendicularY * curvatura;
+
+    const orbe = document.createElement("div");
+    orbe.className = "attack-projectile projectile-magic";
+    orbe.style.left = `${inicio.x}px`;
+    orbe.style.top = `${inicio.y}px`;
+    document.body.appendChild(orbe);
+
+    const animacao = orbe.animate(
+        [
+            {
+                left: `${inicio.x}px`,
+                top: `${inicio.y}px`,
+                opacity: 0,
+                transform: "translate(-50%, -50%) scale(.42)"
+            },
+            {
+                opacity: 1,
+                transform: "translate(-50%, -50%) scale(1.04)",
+                offset: 0.14
+            },
+            {
+                left: `${meioX}px`,
+                top: `${meioY}px`,
+                opacity: 1,
+                transform: "translate(-50%, -50%) scale(1.14)",
+                offset: 0.58
+            },
+            {
+                left: `${fim.x}px`,
+                top: `${fim.y}px`,
+                opacity: 1,
+                transform: "translate(-50%, -50%) scale(.92)"
+            }
+        ],
+        { duration: DURACAO_MAGIA_MS, easing: "cubic-bezier(.18,.74,.18,1)", fill: "forwards" }
+    );
+
+    await aguardarAnimacao(animacao);
+    orbe.remove();
+}
+
+async function animarImpacto(destino: HTMLElement | null, tipoAtaque: TipoAtaqueVisual): Promise<void> {
     if (destino === null) {
-        await esperar(DURACAO_IMPACTO_MS);
+        await esperar(ajustarDuracao(DURACAO_IMPACTO_MS));
         return;
     }
 
-    destino.classList.add("is-hit");
-    await esperar(DURACAO_IMPACTO_MS);
-    destino.classList.remove("is-hit");
+    const classeHit = `hit-${classeTipoAtaque(tipoAtaque)}`;
+    destino.classList.add("is-hit", classeHit);
+
+    if (tipoAtaque === "magico") {
+        // A explosão mágica precisa ser sentida no alvo, sem deslocá-lo de verdade.
+        destino.classList.add("magic-hit-shake");
+    }
+
+    criarEfeitoImpacto(destino, tipoAtaque);
+    await esperar(ajustarDuracao(tipoAtaque === "magico" ? 360 : DURACAO_IMPACTO_MS));
+
+    destino.classList.remove("is-hit", classeHit, "magic-hit-shake");
+}
+
+function criarEfeitoImpacto(destino: HTMLElement, tipoAtaque: TipoAtaqueVisual): void {
+    if (MOVIMENTO_REDUZIDO) return;
+
+    const centro = centroElemento(destino);
+    const efeito = document.createElement("div");
+    efeito.className = `combat-impact impact-${classeTipoAtaque(tipoAtaque)}`;
+    efeito.style.left = `${centro.x}px`;
+    efeito.style.top = `${centro.y}px`;
+    efeito.innerHTML = tipoAtaque === "corpo-a-corpo" ? "<i></i><i></i>" : "<i></i>";
+    document.body.appendChild(efeito);
+
+    window.setTimeout(() => efeito.remove(), tipoAtaque === "magico" ? 700 : 440);
 }
 
 async function animarDestruicao(slot: HTMLElement | null): Promise<void> {
     if (slot === null) {
-        await esperar(360);
+        await esperar(ajustarDuracao(420));
         return;
     }
 
     slot.classList.add("is-destroyed");
-    await esperar(360);
-    slot.classList.remove("creature-slot", "is-destroyed");
+    await esperar(ajustarDuracao(420));
+    slot.classList.remove("creature-slot", "is-destroyed", "type-melee", "type-ranged", "type-magic");
+    slot.removeAttribute("data-tipo-ataque");
     slot.classList.add("empty", "slot-after-destruction");
-    slot.innerHTML = "<span>destruído</span>";
+    slot.innerHTML = '<span class="empty-mark">×</span><span>destruída</span>';
 }
 
 async function animarAtaqueImpedido(slot: HTMLElement | null): Promise<void> {
     if (slot === null) {
-        await esperar(480);
+        await esperar(ajustarDuracao(500));
         return;
     }
 
     slot.classList.add("is-blocked");
-    await esperar(480);
+    await esperar(ajustarDuracao(500));
     slot.classList.remove("is-blocked");
 }
 
@@ -796,15 +1156,13 @@ function atualizarVidaCriaturaVisual(slot: HTMLElement | null, vida: number): vo
 
 function atualizarVidaJogadorVisual(lado: LadoVisual, vida: number): void {
     const hp = document.querySelector<HTMLElement>(`#hp-${lado}`);
-    if (hp !== null) {
-        hp.textContent = `♥ ${vida}`;
+    const valor = hp?.querySelector<HTMLElement>("[data-vida-jogador]");
+    if (valor !== null && valor !== undefined) {
+        valor.textContent = String(vida);
     }
 }
 
-function mostrarFeedbackCombate(
-    texto: string,
-    tipo: "neutro" | "ataque" | "ataque-direto" | "destruicao" | "impedido" | "fim"
-): void {
+function mostrarFeedbackCombate(texto: string, tipo: TipoFeedback): void {
     const feedback = document.querySelector<HTMLDivElement>("#combat-feedback");
     if (feedback === null) return;
 
@@ -817,6 +1175,20 @@ function limparFeedbackCombate(): void {
     if (feedback === null) return;
     feedback.className = "combat-feedback";
     feedback.textContent = "";
+}
+
+function registrarSeparadorCombate(turno: number, atacante: string): void {
+    const texto = `— Combate do turno ${turno} · ${atacante} ataca —`;
+    historico.push(texto);
+
+    const log = document.querySelector<HTMLDivElement>("#event-log");
+    if (log === null) return;
+
+    const linha = document.createElement("p");
+    linha.className = "log-separator";
+    linha.textContent = texto;
+    log.appendChild(linha);
+    log.scrollTop = log.scrollHeight;
 }
 
 function registrarEventoNoHistorico(evento: TiposEventos): void {
@@ -833,9 +1205,13 @@ function registrarEventoNoHistorico(evento: TiposEventos): void {
     linha.className = "event-log-entry newest";
     linha.textContent = texto;
     log.appendChild(linha);
-    log.scrollTop = log.scrollHeight;
 
-    window.setTimeout(() => linha.classList.remove("newest"), 500);
+    while (log.children.length > LIMITE_HISTORICO_VISUAL) {
+        log.firstElementChild?.remove();
+    }
+
+    log.scrollTop = log.scrollHeight;
+    window.setTimeout(() => linha.classList.remove("newest"), 700);
 }
 
 function formatarEvento(evento: TiposEventos): string {
@@ -862,18 +1238,18 @@ function formatarPosicao(posicao: Posicao): string {
 function mensagemResultadoJogada(resultado: ReturnType<Partida["tentarJogarCarta"]>): string {
     switch (resultado) {
         case "Sucesso": return "Carta jogada.";
-        case "ManaInsuficiente": return "Mana insuficiente para jogar essa carta.";
+        case "ManaInsuficiente": return "Mana insuficiente. Sacrifique uma carta ou escolha uma opção mais barata.";
         case "CartaNaoEstaNaMao": return "A carta não está mais na sua mão.";
-        case "PosicaoOcupada": return "Essa posição já está ocupada.";
-        case "ForaDaFasePrincipal": return "Essa ação só pode ser feita na Fase Principal.";
+        case "PosicaoOcupada": return "Essa posição já está ocupada. Escolha um espaço vazio.";
+        case "ForaDaFasePrincipal": return "Essa ação só pode ser feita durante o seu turno.";
     }
 }
 
 function mensagemResultadoSacrificio(resultado: ReturnType<Partida["tentarSacrificarCartaMao"]>): string {
     switch (resultado) {
         case "Sucesso": return "Sacrifício realizado.";
-        case "ForaDaFasePrincipal": return "O sacrifício só pode ser feito na Fase Principal.";
-        case "SacrificioJaRealizado": return "Você já realizou o sacrifício permitido neste turno.";
+        case "ForaDaFasePrincipal": return "O sacrifício só pode ser feito durante o seu turno.";
+        case "SacrificioJaRealizado": return "Você já utilizou o único sacrifício permitido neste turno.";
         case "CartaNaoEstaNaMao": return "Essa carta não está mais na sua mão.";
         case "CriaturaNaoEncontrada": return "Não existe criatura nessa posição.";
     }
@@ -888,6 +1264,7 @@ function voltarAoSetup(): void {
     indiceCartaSelecionada = null;
     modoSacrificioCampo = false;
     processando = false;
+    ajudaAberta = false;
     mensagemInterface = "";
     historico = [];
     renderizar();
@@ -915,7 +1292,7 @@ function nomeColuna(coluna: Coluna): string {
     }
 }
 
-function iconeTipo(tipo: CartaCriatura["tipoAtaque"]): string {
+function iconeTipo(tipo: TipoAtaqueVisual): string {
     switch (tipo) {
         case "corpo-a-corpo": return "⚔";
         case "distancia": return "➶";
@@ -923,11 +1300,43 @@ function iconeTipo(tipo: CartaCriatura["tipoAtaque"]): string {
     }
 }
 
-function nomeTipo(tipo: CartaCriatura["tipoAtaque"]): string {
+function nomeTipo(tipo: TipoAtaqueVisual): string {
     switch (tipo) {
-        case "corpo-a-corpo": return "Corpo-a-corpo";
+        case "corpo-a-corpo": return "Corpo a corpo";
         case "distancia": return "Distância";
         case "magico": return "Mágico";
+    }
+}
+
+function classeTipoAtaque(tipo: TipoAtaqueVisual): string {
+    switch (tipo) {
+        case "corpo-a-corpo": return "type-melee";
+        case "distancia": return "type-ranged";
+        case "magico": return "type-magic";
+    }
+}
+
+function duracaoAtaque(tipo: TipoAtaqueVisual): number {
+    switch (tipo) {
+        case "corpo-a-corpo": return DURACAO_MELEE_MS;
+        case "distancia": return DURACAO_DISTANCIA_MS;
+        case "magico": return DURACAO_MAGIA_MS;
+    }
+}
+
+function centroElemento(elemento: HTMLElement): { x: number; y: number } {
+    const retangulo = elemento.getBoundingClientRect();
+    return {
+        x: retangulo.left + retangulo.width / 2,
+        y: retangulo.top + retangulo.height / 2
+    };
+}
+
+async function aguardarAnimacao(animacao: Animation): Promise<void> {
+    try {
+        await animacao.finished;
+    } catch {
+        // A animação pode ser cancelada se o navegador desmontar o elemento.
     }
 }
 
@@ -938,6 +1347,10 @@ function escaparHtml(valor: string): string {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function ajustarDuracao(ms: number): number {
+    return MOVIMENTO_REDUZIDO ? Math.min(ms, 90) : ms;
 }
 
 function esperar(ms: number): Promise<void> {
