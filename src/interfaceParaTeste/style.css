@@ -3303,3 +3303,645 @@ select:hover {
     72% { transform: translate(3px, 1px) scale(1.015); }
     88% { transform: translate(-1px, 0) scale(1.005); }
 }
+
+
+/* ============================================================
+   v0.5 — Artes procedurais nas criaturas
+   Mantém todos os slots do campo com a mesma dimensão e deixa a
+   criatura inteira visível. Este bloco fica no final de propósito
+   para sobrescrever as regras responsivas antigas sem desmontá-las.
+   ============================================================ */
+
+:root {
+    --field-card-height: clamp(112px, 13.5vh, 138px);
+    --field-card-max-width: 142px;
+}
+
+/* O grid usa cartões compactos e centralizados; em telas largas eles
+   não crescem indefinidamente, e em telas estreitas encolhem juntos. */
+.slots {
+    grid-template-columns: repeat(3, minmax(0, var(--field-card-max-width)));
+    justify-content: center;
+    align-items: stretch;
+}
+
+.board-slot {
+    width: 100%;
+    height: var(--field-card-height);
+    min-height: 0;
+    padding: 0;
+}
+
+/* Todos os cards de criatura em campo têm a mesma composição:
+   arte inteira em cima, nome + atributos embaixo. */
+.board-slot.creature-slot {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0;
+    align-items: stretch;
+    text-align: left;
+    overflow: hidden;
+}
+
+.board-creature-art {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(225,220,198,.08);
+    background:
+        radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--type-color) 13%, transparent), transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.05));
+}
+
+.board-creature-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 3px 7px 0;
+    object-fit: contain;
+    object-position: 50% 100%;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,.28));
+    pointer-events: none;
+    user-select: none;
+}
+
+.board-type-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 23px;
+    height: 23px;
+    display: grid;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--type-color) 34%, transparent);
+    border-radius: 7px;
+    background: rgba(5,13,11,.78);
+    color: var(--type-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,.20);
+    font-size: .72rem;
+    line-height: 1;
+    backdrop-filter: blur(5px);
+}
+
+.board-creature-info {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 6px 6px;
+    background: rgba(7, 16, 14, .88);
+}
+
+.board-creature-name {
+    min-width: 0;
+    overflow: hidden;
+    color: #eff0eb;
+    font-size: clamp(.58rem, .72vw, .72rem);
+    font-weight: 850;
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-creature-info .mini-stats {
+    grid-column: auto;
+    align-self: center;
+    display: flex;
+    justify-content: flex-end;
+    gap: 3px;
+    margin: 0;
+}
+
+.board-creature-info .attack-stat,
+.board-creature-info .life-stat {
+    min-width: 30px;
+    min-height: 23px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 4px;
+    border-radius: 6px;
+    font-size: .68rem;
+    line-height: 1;
+}
+
+.board-creature-info .attack-stat small,
+.board-creature-info .life-stat small {
+    font-size: .36rem;
+}
+
+/* A antiga estrutura textual da criatura não é mais usada no campo. */
+.creature-copy,
+.creature-slot > .mini-type-badge {
+    display: none;
+}
+
+/* Arte da carta na mão. Mantemos o card compacto, mas o placeholder
+   agora realmente contém a criatura inteira e não um símbolo genérico. */
+.card-art {
+    position: relative;
+    height: 96px;
+    display: grid;
+    place-items: center;
+    margin: 9px 0 10px;
+    overflow: hidden;
+    border: 1px solid rgba(225,220,198,.08);
+    border-radius: 10px;
+    background:
+        radial-gradient(circle at 50% 56%, color-mix(in srgb, var(--type-color) 15%, transparent), transparent 58%),
+        linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.08));
+}
+
+.hand-creature-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 2px 7px 0;
+    object-fit: contain;
+    object-position: 50% 100%;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.28));
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Fallback caso o JS do gerador não carregue ou uma geração falhe. */
+.creature-art-fallback {
+    --type-color: var(--gold);
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--type-color);
+    background:
+        radial-gradient(circle, color-mix(in srgb, var(--type-color) 12%, transparent), transparent 58%);
+}
+
+.creature-art-fallback.type-melee { --type-color: var(--melee); }
+.creature-art-fallback.type-ranged { --type-color: var(--ranged); }
+.creature-art-fallback.type-magic { --type-color: var(--magic); }
+
+.creature-art-fallback i {
+    font-size: 1.45rem;
+    font-style: normal;
+}
+
+/* O campo é o foco do playtest: rótulos menores liberam espaço para
+   as quatro linhas de criaturas sem exigir zoom-out. */
+.board-zone {
+    padding-block: 7px;
+}
+
+.board-row {
+    grid-template-columns: 66px minmax(0, 1fr);
+    gap: 8px;
+    margin: 6px 0;
+}
+
+.row-label {
+    padding-left: 0;
+}
+
+.empty.board-slot {
+    place-content: center;
+}
+
+/* Notebooks com pouca altura: comprime o campo antes de sacrificar
+   legibilidade dos atributos. */
+@media (max-height: 820px) and (min-width: 761px) {
+    :root {
+        --field-card-height: clamp(102px, 12.5vh, 116px);
+    }
+
+    .player-strip {
+        min-height: 66px;
+        padding-block: 8px;
+    }
+
+    .board-zone {
+        padding-block: 5px;
+    }
+
+    .board-row {
+        margin-block: 4px;
+    }
+
+    .board-creature-name {
+        font-size: .61rem;
+    }
+}
+
+/* Tablet / janela estreita */
+@media (max-width: 900px) {
+    :root {
+        --field-card-height: 112px;
+        --field-card-max-width: 132px;
+    }
+
+    .board-row {
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 6px;
+    }
+
+    .board-creature-image {
+        padding-inline: 5px;
+    }
+
+    .card-art {
+        height: 84px;
+    }
+}
+
+/* Celular: as três colunas continuam aparecendo juntas. O card encolhe
+   como unidade, em vez de esconder arte ou atributos. */
+@media (max-width: 640px) {
+    :root {
+        --field-card-height: 100px;
+        --field-card-max-width: 1fr;
+    }
+
+    .board-zone {
+        padding: 5px 6px;
+    }
+
+    .board-row {
+        grid-template-columns: 39px minmax(0, 1fr);
+        gap: 4px;
+        margin: 4px 0;
+    }
+
+    .slots {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px;
+    }
+
+    .board-slot {
+        height: var(--field-card-height);
+        border-radius: 9px;
+    }
+
+    .board-creature-image {
+        padding: 2px 2px 0;
+    }
+
+    .board-type-badge {
+        top: 3px;
+        right: 3px;
+        width: 19px;
+        height: 19px;
+        border-radius: 6px;
+        font-size: .58rem;
+    }
+
+    .board-creature-info {
+        grid-template-columns: 1fr;
+        gap: 3px;
+        padding: 3px 4px 4px;
+    }
+
+    .board-creature-name {
+        font-size: clamp(.49rem, 2.35vw, .59rem);
+    }
+
+    .board-creature-info .mini-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .board-creature-info .attack-stat,
+    .board-creature-info .life-stat {
+        min-width: 0;
+        flex: 1;
+        min-height: 18px;
+        padding: 2px 3px;
+        font-size: .57rem;
+    }
+
+    .board-creature-info .attack-stat small,
+    .board-creature-info .life-stat small {
+        font-size: .31rem;
+    }
+
+    .row-label strong {
+        font-size: .52rem;
+    }
+
+    .row-label small {
+        font-size: .43rem;
+    }
+
+    .card-art {
+        height: 76px;
+        margin-block: 7px 8px;
+    }
+}
+
+@media (max-width: 430px) {
+    :root {
+        --field-card-height: 94px;
+    }
+
+    .board-zone {
+        padding-inline: 4px;
+    }
+
+    .board-row {
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 3px;
+    }
+
+    .slots {
+        gap: 4px;
+    }
+
+    .row-label {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        align-items: center;
+        padding: 0;
+    }
+
+    .row-label small {
+        display: none;
+    }
+
+    .board-type-badge {
+        width: 17px;
+        height: 17px;
+        font-size: .51rem;
+    }
+
+    .board-creature-name {
+        font-size: clamp(.46rem, 2.15vw, .55rem);
+    }
+
+    .board-creature-info .attack-stat,
+    .board-creature-info .life-stat {
+        font-size: .52rem;
+    }
+
+    .card-art {
+        height: 68px;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --field-card-height: 90px;
+    }
+
+    .board-row {
+        grid-template-columns: 27px minmax(0, 1fr);
+    }
+
+    .board-creature-info {
+        padding-inline: 3px;
+    }
+
+    .board-creature-name {
+        font-size: .47rem;
+    }
+}
+
+
+
+/* ============================================================
+   PATCH v0.5.1 — CARTAS / ARTES SVG
+   Corrige apenas:
+   1) arte da criatura cortada no campo;
+   2) aparência de "recorte" em vez de carta;
+   3) cartas da mão pequenas demais.
+   ============================================================ */
+
+/* Faz o SVG caber inteiro na janela de arte, sem crop. */
+.board-creature-image,
+.hand-creature-image {
+    display: block;
+    width: auto !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    margin: auto;
+    padding: 4px !important;
+}
+
+/* ---------- CAMPO: mini-cartas completas ---------- */
+
+:root {
+    --field-card-height: 170px;
+    --field-card-max-width: 156px;
+}
+
+.board-slot {
+    height: var(--field-card-height);
+}
+
+.board-slot.creature-slot {
+    grid-template-rows: minmax(0, 1fr) 36px;
+    border-radius: 13px;
+    background:
+        linear-gradient(145deg,
+            color-mix(in srgb, var(--type-color) 8%, transparent),
+            transparent 46%),
+        linear-gradient(180deg, #1b2c27 0%, #101c19 100%);
+}
+
+.board-creature-art {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 3px;
+    background:
+        radial-gradient(circle at 50% 52%,
+            color-mix(in srgb, var(--type-color) 10%, transparent),
+            transparent 64%),
+        rgba(3, 9, 8, .30);
+}
+
+.board-creature-art::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    pointer-events: none;
+    border: 1px solid rgba(225, 220, 198, .07);
+    border-radius: 8px;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.13);
+}
+
+.board-creature-info {
+    min-height: 36px;
+    padding: 5px 6px;
+    gap: 5px;
+}
+
+.board-creature-name {
+    font-size: .68rem;
+}
+
+.board-creature-info .attack-stat,
+.board-creature-info .life-stat {
+    min-width: 34px;
+    min-height: 24px;
+    font-size: .70rem;
+}
+
+/* ---------- MÃO: cards maiores e mais legíveis ---------- */
+
+.game-card {
+    flex: 0 0 170px;
+    min-height: 232px;
+    padding: 9px 10px 11px;
+}
+
+.card-art {
+    height: 116px;
+    min-height: 116px;
+    padding: 3px;
+    margin: 9px 0 9px;
+}
+
+.hand-creature-image {
+    padding: 3px !important;
+}
+
+.card-name {
+    min-height: 38px;
+    font-size: .84rem;
+}
+
+.card-stats .attack-stat,
+.card-stats .life-stat {
+    min-height: 29px;
+    font-size: .82rem;
+}
+
+/* Notebook baixo */
+@media (max-height: 820px) and (min-width: 761px) {
+    :root {
+        --field-card-height: 148px;
+        --field-card-max-width: 146px;
+    }
+
+    .board-slot.creature-slot {
+        grid-template-rows: minmax(0, 1fr) 34px;
+    }
+
+    .game-card {
+        flex-basis: 158px;
+        min-height: 216px;
+    }
+
+    .card-art {
+        height: 102px;
+        min-height: 102px;
+    }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    :root {
+        --field-card-height: 148px;
+        --field-card-max-width: 140px;
+    }
+
+    .game-card {
+        flex: 0 0 150px;
+        min-height: 210px;
+    }
+
+    .card-art {
+        height: 98px;
+        min-height: 98px;
+    }
+}
+
+/* Celular */
+@media (max-width: 640px) {
+    :root {
+        --field-card-height: 126px;
+    }
+
+    .board-slot.creature-slot {
+        grid-template-rows: minmax(0, 1fr) 33px;
+    }
+
+    .board-creature-art {
+        padding: 2px;
+    }
+
+    .board-creature-image {
+        padding: 2px !important;
+    }
+
+    .board-creature-info {
+        min-height: 33px;
+        padding: 3px 4px;
+    }
+
+    .board-creature-name {
+        font-size: clamp(.50rem, 2.35vw, .59rem);
+    }
+
+    .game-card {
+        flex: 0 0 132px;
+        min-height: 188px;
+        padding: 7px 8px 8px;
+    }
+
+    .card-art {
+        height: 84px;
+        min-height: 84px;
+        margin: 7px 0 7px;
+    }
+
+    .card-name {
+        min-height: 31px;
+        font-size: .69rem;
+    }
+}
+
+@media (max-width: 430px) {
+    :root {
+        --field-card-height: 118px;
+    }
+
+    .board-slot.creature-slot {
+        grid-template-rows: minmax(0, 1fr) 31px;
+    }
+
+    .game-card {
+        flex-basis: 124px;
+        min-height: 180px;
+    }
+
+    .card-art {
+        height: 78px;
+        min-height: 78px;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --field-card-height: 112px;
+    }
+
+    .game-card {
+        flex-basis: 118px;
+        min-height: 174px;
+    }
+
+    .card-art {
+        height: 73px;
+        min-height: 73px;
+    }
+}

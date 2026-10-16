@@ -15,6 +15,88 @@ type LadoVisual = "humano" | "bot";
 type TipoAtaqueVisual = CartaCriatura["tipoAtaque"];
 type TipoFeedback = "neutro" | "ataque" | "ataque-direto" | "destruicao" | "impedido" | "fim";
 
+
+type OpcoesGeradorSVG = {
+    seed?: string;
+    fundo?: boolean;
+    subtipo?: string;
+    genero?: "M" | "F";
+};
+
+type GeradorSVG = (tipo: string, opcoes?: OpcoesGeradorSVG) => string;
+
+type ConfiguracaoArteCriatura = {
+    tipo: "Humanos" | "Monstros" | "Alien" | "Mortos-Vivos" | "Animais";
+    subtipo: string;
+    seed: string;
+    genero?: "M" | "F";
+};
+
+type GlobalComGerador = typeof globalThis & {
+    gerarSVG?: GeradorSVG;
+};
+
+/**
+ * A arte é uma preocupação exclusiva da interface de playtest.
+ * O domínio continua sem saber nada sobre SVG, seed ou família visual.
+ *
+ * A chave é o nome normalizado porque a Criatura em campo não carrega o id
+ * da CartaCriatura que a originou. Para as 40 cartas atuais isso é estável e
+ * faz a mesma carta usar a mesma imagem na mão e no tabuleiro.
+ */
+const CONFIGURACOES_ARTE: Record<string, ConfiguracaoArteCriatura> = {
+    "aranha filhote":       { tipo: "Animais",      subtipo: "aranha",          seed: "tcg-card-001" },
+    "servo":                 { tipo: "Mortos-Vivos", subtipo: "zumbi",           seed: "tcg-card-002" },
+    "barreira magica":       { tipo: "Alien",        subtipo: "cristalino",      seed: "tcg-card-003" },
+    "guerreiro":             { tipo: "Humanos",      subtipo: "guerreiro",       seed: "tcg-card-004", genero: "M" },
+    "golem menor":           { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-005" },
+    "goblin":                { tipo: "Monstros",     subtipo: "goblin",          seed: "tcg-card-006" },
+    "arqueiro":              { tipo: "Humanos",      subtipo: "arqueiro",        seed: "tcg-card-007", genero: "M" },
+    "besteiro":              { tipo: "Humanos",      subtipo: "arqueiro",        seed: "tcg-card-008", genero: "M" },
+    "mago aprendiz":         { tipo: "Humanos",      subtipo: "mago",            seed: "tcg-card-009", genero: "M" },
+    "lich enfraquecido":     { tipo: "Mortos-Vivos", subtipo: "lich",            seed: "tcg-card-010" },
+
+    "guerreiro armadurado":  { tipo: "Humanos",      subtipo: "guerreiro",       seed: "tcg-card-011", genero: "M" },
+    "golem medio":           { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-012" },
+    "goblin guerreiro":      { tipo: "Monstros",     subtipo: "goblin",          seed: "tcg-card-013" },
+    "arqueiro treinado":     { tipo: "Humanos",      subtipo: "arqueiro",        seed: "tcg-card-014", genero: "M" },
+    "besteiro pesado":       { tipo: "Humanos",      subtipo: "arqueiro",        seed: "tcg-card-015", genero: "M" },
+    "monge":                 { tipo: "Humanos",      subtipo: "monge",           seed: "tcg-card-016", genero: "M" },
+    "feiticeiro":            { tipo: "Humanos",      subtipo: "necromante",      seed: "tcg-card-017", genero: "M" },
+
+    "aranha alien":          { tipo: "Alien",        subtipo: "robo-aracnideo",  seed: "tcg-card-018" },
+    "urso":                  { tipo: "Animais",      subtipo: "urso",            seed: "tcg-card-019" },
+    "muralha viva":          { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-020" },
+    "barbaro da pedra":      { tipo: "Humanos",      subtipo: "barbaro",         seed: "tcg-card-021", genero: "M" },
+    "tripod":                { tipo: "Alien",        subtipo: "sentinela",       seed: "tcg-card-022" },
+    "dragao zumbi":          { tipo: "Mortos-Vivos", subtipo: "dragao-zumbi",    seed: "tcg-card-023" },
+    "muminho":               { tipo: "Mortos-Vivos", subtipo: "mumia",           seed: "tcg-card-024" },
+    "mumia":                 { tipo: "Mortos-Vivos", subtipo: "mumia",           seed: "tcg-card-024" },
+
+    "cacador alien":         { tipo: "Alien",        subtipo: "predador",        seed: "tcg-card-025" },
+    "tigre":                 { tipo: "Animais",      subtipo: "tigre",           seed: "tcg-card-026" },
+    "colosso":               { tipo: "Monstros",     subtipo: "ciclope",         seed: "tcg-card-027" },
+    "canhao cerrado":        { tipo: "Alien",        subtipo: "mecha",           seed: "tcg-card-028" },
+    "tubarao voador":        { tipo: "Alien",        subtipo: "aquatico",        seed: "tcg-card-029" },
+    "dragao":                { tipo: "Monstros",     subtipo: "dragao",          seed: "tcg-card-030" },
+    "alien tecnomante":      { tipo: "Alien",        subtipo: "tecnologico",     seed: "tcg-card-031" },
+
+    "slime gigante":         { tipo: "Monstros",     subtipo: "slime",           seed: "tcg-card-032" },
+    "fantasma":              { tipo: "Mortos-Vivos", subtipo: "fantasma",        seed: "tcg-card-033" },
+    "golem de concreto":     { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-034" },
+    "cospe acido":           { tipo: "Alien",        subtipo: "reptiliano",      seed: "tcg-card-035" },
+    "mago supremo":          { tipo: "Humanos",      subtipo: "mago",            seed: "tcg-card-036", genero: "M" },
+
+    "aranha primordial":     { tipo: "Animais",      subtipo: "aranha",          seed: "tcg-card-037" },
+    "primeiro mago":         { tipo: "Humanos",      subtipo: "mago",            seed: "tcg-card-038", genero: "M" },
+    "guerreiro lendario":    { tipo: "Humanos",      subtipo: "paladino",        seed: "tcg-card-039", genero: "M" },
+    "montanha viva":         { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-040" }
+};
+
+let gerarSVGProcedural: GeradorSVG | null = null;
+const cacheUrlArte = new Map<string, string>();
+const avisosArteDesconhecida = new Set<string>();
+
 const DURACAO_MELEE_MS = 440;
 const DURACAO_DISTANCIA_MS = 460;
 const DURACAO_MAGIA_MS = 540;
@@ -42,7 +124,30 @@ let ajudaAberta = false;
 let mensagemInterface = "";
 let historico: string[] = [];
 
-renderizar();
+void inicializarInterface();
+
+async function inicializarInterface(): Promise<void> {
+    await carregarGeradorSVG();
+    renderizar();
+}
+
+async function carregarGeradorSVG(): Promise<void> {
+    try {
+        // O gerador atual é JavaScript legado/IIFE. Importamos apenas pelo efeito
+        // colateral; ele publica gerarSVG em globalThis no navegador.
+        // @ts-ignore arquivo JS temporário sem arquivo de declaração TypeScript.
+        await import("./criaturas.js");
+
+        const api = (globalThis as GlobalComGerador).gerarSVG;
+        if (typeof api === "function") {
+            gerarSVGProcedural = api;
+        } else {
+            console.warn("[TCG] criaturas.js carregou, mas gerarSVG não foi encontrado.");
+        }
+    } catch (erro) {
+        console.warn("[TCG] Não foi possível carregar o gerador SVG. A interface seguirá com placeholders.", erro);
+    }
+}
 
 function renderizar(): void {
     if (faseInterface === "setup") {
@@ -546,14 +651,17 @@ function htmlSlot(jogador: Jogador, posicao: Posicao, interativo: boolean): stri
             ${interativo ? "" : "disabled"}
             aria-label="${escaparHtml(criatura.nome)}, ataque ${criatura.ataque}, vida ${criatura.vida}"
         >
-            <span class="mini-type-badge">${iconeTipo(criatura.tipoAtaque)}</span>
-            <span class="creature-copy">
-                <strong>${escaparHtml(criatura.nome)}</strong>
-                <small>${nomeTipo(criatura.tipoAtaque)}</small>
+            <span class="board-creature-art" aria-hidden="true">
+                ${htmlArteCriatura(criatura.nome, criatura.tipoAtaque, "board-creature-image")}
+                <span class="board-type-badge" title="${nomeTipo(criatura.tipoAtaque)}">${iconeTipo(criatura.tipoAtaque)}</span>
             </span>
-            <span class="mini-stats">
-                <b class="attack-stat"><small>ATQ</small>${criatura.ataque}</b>
-                <b class="life-stat"><small>VIDA</small><span data-vida-criatura>${criatura.vida}</span></b>
+
+            <span class="board-creature-info">
+                <strong class="board-creature-name" title="${escaparHtml(criatura.nome)}">${escaparHtml(criatura.nome)}</strong>
+                <span class="mini-stats">
+                    <b class="attack-stat"><small>ATQ</small>${criatura.ataque}</b>
+                    <b class="life-stat"><small>VIDA</small><span data-vida-criatura>${criatura.vida}</span></b>
+                </span>
             </span>
         </button>
     `;
@@ -568,7 +676,9 @@ function htmlCartaMao(carta: Carta, indice: number, interativo: boolean): string
             <button class="game-card ${classeTipo} ${selecionada ? "selected" : ""}" data-indice-carta="${indice}" ${interativo ? "" : "disabled"} aria-pressed="${selecionada}">
                 <span class="card-cost" title="Custo de mana"><small>MANA</small>${carta.custoMana}</span>
                 <span class="card-type-pill">${iconeTipo(carta.tipoAtaque)} ${nomeTipo(carta.tipoAtaque)}</span>
-                <span class="card-art-placeholder" aria-hidden="true"><i>${iconeTipo(carta.tipoAtaque)}</i></span>
+                <span class="card-art creature-card-art" aria-hidden="true">
+                    ${htmlArteCriatura(carta.nome, carta.tipoAtaque, "hand-creature-image")}
+                </span>
                 <strong class="card-name">${escaparHtml(carta.nome)}</strong>
                 <span class="card-stats">
                     <b class="attack-stat"><small>ATQ</small>${carta.ataque}</b>
@@ -586,6 +696,94 @@ function htmlCartaMao(carta: Carta, indice: number, interativo: boolean): string
             <span class="card-type-pill">${escaparHtml(carta.tipoCarta)}</span>
         </button>
     `;
+}
+
+
+function htmlArteCriatura(nome: string, tipoAtaque: TipoAtaqueVisual, classeImagem: string): string {
+    const url = obterUrlArteCriatura(nome);
+
+    if (url === null) {
+        return `<span class="creature-art-fallback ${classeTipoAtaque(tipoAtaque)}"><i>${iconeTipo(tipoAtaque)}</i></span>`;
+    }
+
+    return `<img class="${classeImagem}" src="${url}" alt="" draggable="false" loading="eager">`;
+}
+
+function obterUrlArteCriatura(nome: string): string | null {
+    if (gerarSVGProcedural === null) {
+        return null;
+    }
+
+    const chave = normalizarChaveArte(nome);
+    const configuracao = CONFIGURACOES_ARTE[chave] ?? criarConfiguracaoFallback(nome);
+    const cacheKey = `${configuracao.tipo}|${configuracao.subtipo}|${configuracao.seed}|${configuracao.genero ?? ""}`;
+
+    const existente = cacheUrlArte.get(cacheKey);
+    if (existente !== undefined) {
+        return existente;
+    }
+
+    try {
+        // fundo:false deixa a silhueta inteira legível tanto na mão quanto no campo.
+        // O SVG vira Blob URL para isolar ids de gradients/filters entre cópias repetidas
+        // da mesma carta e para não inflar o innerHTML a cada renderização.
+        const svg = gerarSVGProcedural(configuracao.tipo, {
+            seed: configuracao.seed,
+            subtipo: configuracao.subtipo,
+            genero: configuracao.genero,
+            fundo: false
+        });
+
+        const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        cacheUrlArte.set(cacheKey, url);
+        return url;
+    } catch (erro) {
+        console.warn(`[TCG] Falha ao gerar arte para "${nome}".`, erro);
+        return null;
+    }
+}
+
+function criarConfiguracaoFallback(nome: string): ConfiguracaoArteCriatura {
+    const chave = normalizarChaveArte(nome);
+
+    if (!avisosArteDesconhecida.has(chave)) {
+        avisosArteDesconhecida.add(chave);
+        console.warn(`[TCG] "${nome}" ainda não tem mapeamento visual explícito; usando arte procedural de fallback.`);
+    }
+
+    if (chave.includes("golem") || chave.includes("muralha") || chave.includes("montanha")) {
+        return { tipo: "Monstros", subtipo: "golem", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("aranha")) {
+        return { tipo: "Animais", subtipo: "aranha", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("dragao")) {
+        return { tipo: "Monstros", subtipo: "dragao", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("mago") || chave.includes("feiticeiro")) {
+        return { tipo: "Humanos", subtipo: "mago", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("arqueiro") || chave.includes("besteiro")) {
+        return { tipo: "Humanos", subtipo: "arqueiro", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("guerreiro")) {
+        return { tipo: "Humanos", subtipo: "guerreiro", seed: `fallback-${chave}` };
+    }
+    if (chave.includes("alien")) {
+        return { tipo: "Alien", subtipo: "predador", seed: `fallback-${chave}` };
+    }
+
+    return { tipo: "Monstros", subtipo: "orc", seed: `fallback-${chave}` };
+}
+
+function normalizarChaveArte(valor: string): string {
+    return valor
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
 }
 
 function htmlMensagemAcao(controlesAtivos: boolean): string {
