@@ -124,9 +124,16 @@ let ajudaAberta = false;
 let mensagemInterface = "";
 let historico: string[] = [];
 
+// Estado exclusivamente visual: não altera regras nem objetos do domínio.
+let maoRecolhida = window.matchMedia("(max-height: 520px) and (orientation: landscape)").matches;
+let maoRecolhidaAntesDoCombate: boolean | null = null;
+let historicoAberto = window.matchMedia("(min-width: 681px)").matches;
+let observadorAlturaMao: ResizeObserver | null = null;
+
 void inicializarInterface();
 
 async function inicializarInterface(): Promise<void> {
+    document.addEventListener("keydown", tratarTecladoAjuda);
     await carregarGeradorSVG();
     renderizar();
 }
@@ -284,6 +291,9 @@ function prepararPartida(chaveHumano: ChaveDeck, chaveBot: ChaveDeck, iniciativa
     modoSacrificioCampo = false;
     processando = false;
     ajudaAberta = false;
+    maoRecolhida = window.matchMedia("(max-height: 520px) and (orientation: landscape)").matches;
+    maoRecolhidaAntesDoCombate = null;
+    historicoAberto = window.matchMedia("(min-width: 681px)").matches;
 
     partida.iniciarPartida();
     faseInterface = "mulligan";
@@ -395,6 +405,11 @@ async function continuarFluxoAutomatico(): Promise<void> {
 
         if (partida!.obterJogadorAtivo() === humano) {
             processando = false;
+            // Reabre a mão somente se estava expandida antes do combate.
+            if (maoRecolhidaAntesDoCombate !== null) {
+                maoRecolhida = maoRecolhidaAntesDoCombate;
+                maoRecolhidaAntesDoCombate = null;
+            }
             mensagemInterface = "Seu turno: selecione uma carta da mão e escolha onde colocá-la.";
             renderizar();
             return;
@@ -441,6 +456,14 @@ function renderizarJogo(): void {
     const controlesAtivos = turnoHumano && !processando;
     const historicoVisivel = historico.slice(-LIMITE_HISTORICO_VISUAL);
 
+    // Preserva a navegação durante as reconstruções de DOM existentes no protótipo.
+    const scrollCampo = document.querySelector<HTMLElement>("#game-stage")?.scrollTop ?? 0;
+    const scrollMao = document.querySelector<HTMLElement>("#mao-jogador")?.scrollLeft ?? 0;
+    const historicoAnterior = document.querySelector<HTMLDetailsElement>(".log-panel");
+    if (historicoAnterior) historicoAberto = historicoAnterior.open;
+    const focoAnterior = identificarFocoVisual(document.activeElement);
+    const ajudaEstavaAberta = document.querySelector(".help-backdrop") !== null;
+
     app.innerHTML = `
         <main class="game-shell">
             <header class="topbar panel">
@@ -467,6 +490,7 @@ function renderizarJogo(): void {
                 </div>
             </header>
 
+            <div class="game-stage" id="game-stage" aria-label="Área de jogo e histórico">
             <section class="battlefield panel" aria-label="Campo de batalha">
                 <div id="combat-feedback" class="combat-feedback" aria-live="polite"></div>
 
@@ -481,46 +505,6 @@ function renderizarJogo(): void {
                 ${htmlTabuleiro(humano!, true, controlesAtivos)}
                 ${htmlCabecalhoJogador(humano!, true)}
             </section>
-
-            <section class="play-area-grid">
-                <section class="panel hand-panel">
-                    <div class="panel-title-row hand-title-row">
-                        <div>
-                            <span class="section-kicker">SUAS OPÇÕES</span>
-                            <h2>Sua mão</h2>
-                            <span class="muted">${humano!.mao.length} cartas na mão · ${humano!.deck.tamanhoDeck()} restantes no deck</span>
-                        </div>
-                        <div class="mana-display" aria-label="Mana disponível: ${humano!.mostrarMana}">
-                            <span class="mana-symbol" aria-hidden="true">◆</span>
-                            <span class="mana-copy"><small>MANA</small><strong>${humano!.mostrarMana}</strong></span>
-                        </div>
-                    </div>
-
-                    <div class="hand" id="mao-jogador">
-                        ${humano!.mao.map((carta, indice) => htmlCartaMao(carta, indice, controlesAtivos)).join("")}
-                    </div>
-
-                    <div class="action-bar">
-                        <div class="action-status">
-                            <span class="action-status-label">O QUE FAZER AGORA</span>
-                            <p>${htmlMensagemAcao(controlesAtivos)}</p>
-                        </div>
-                        <div class="action-buttons">
-                            <button id="sacrificar-mao" class="btn btn-secondary" ${!controlesAtivos || indiceCartaSelecionada === null ? "disabled" : ""}>
-                                <span>Sacrificar carta selecionada</span>
-                                <small>gera mana extra</small>
-                            </button>
-                            <button id="sacrificar-campo" class="btn ${modoSacrificioCampo ? "btn-warning" : "btn-secondary"}" ${!controlesAtivos ? "disabled" : ""}>
-                                <span>${modoSacrificioCampo ? "Escolha uma criatura" : "Sacrificar do campo"}</span>
-                                <small>${modoSacrificioCampo ? "clique no campo" : "+1 mana"}</small>
-                            </button>
-                            <button id="passar-turno" class="btn btn-primary btn-end-turn" ${!controlesAtivos ? "disabled" : ""}>
-                                <span>Encerrar turno</span>
-                                <small>resolver combate →</small>
-                            </button>
-                        </div>
-                    </div>
-                </section>
 
                 <aside class="side-column">
                     <section class="panel quick-guide-panel">
@@ -538,7 +522,7 @@ function renderizarJogo(): void {
                         <p class="sacrifice-note"><strong>Sacrifício:</strong> no máximo uma vez por turno. Criatura da mão gera +2 mana; criatura do campo gera +1.</p>
                     </section>
 
-                    <details class="panel log-panel" open>
+                    <details class="panel log-panel" ${historicoAberto ? "open" : ""}>
                         <summary class="log-summary">
                             <span><span class="section-kicker">PARTIDA</span><strong>Histórico</strong></span>
                             <span class="log-count">${historico.length}</span>
@@ -550,6 +534,48 @@ function renderizarJogo(): void {
                         </div>
                     </details>
                 </aside>
+            </div>
+
+            <section class="panel hand-panel hand-dock" id="hand-dock" aria-label="Mão e ações do jogador">
+                <div class="hand-dock-toolbar">
+                    <button id="alternar-mao" class="hand-dock-toggle" aria-expanded="${!maoRecolhida}" aria-controls="hand-dock-content" type="button">
+                        <span class="hand-dock-chevron" aria-hidden="true">${maoRecolhida ? "⌃" : "⌄"}</span>
+                        <span class="hand-dock-title">
+                            <strong>Sua mão <span class="hand-count">(${humano!.mao.length})</span></strong>
+                            <small>${maoRecolhida ? "Mostrar cartas" : "Recolher cartas"} · ${humano!.deck.tamanhoDeck()} no deck</small>
+                        </span>
+                    </button>
+                    <div class="hand-dock-controls">
+                        <div class="mana-display" aria-label="Mana disponível: ${humano!.mostrarMana}">
+                            <span class="mana-symbol" aria-hidden="true">◆</span>
+                            <span class="mana-copy"><small>MANA</small><strong>${humano!.mostrarMana}</strong></span>
+                        </div>
+                        <button id="passar-turno" class="btn btn-primary btn-end-turn hand-end-turn" ${!controlesAtivos ? "disabled" : ""}>
+                            <span>Encerrar turno</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="hand-dock-content" class="hand-dock-content" ${maoRecolhida ? "hidden" : ""}>
+                    <div class="hand" id="mao-jogador" aria-label="Cartas disponíveis na mão">
+                        ${humano!.mao.map((carta, indice) => htmlCartaMao(carta, indice, controlesAtivos)).join("")}
+                    </div>
+                    <div class="action-bar">
+                        <div class="action-status" role="status" aria-live="polite" aria-atomic="true">
+                            <span class="action-status-label">O QUE FAZER AGORA</span>
+                            <p>${htmlMensagemAcao(controlesAtivos)}</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="sacrificar-mao" class="btn btn-secondary" ${!controlesAtivos || indiceCartaSelecionada === null ? "disabled" : ""}>
+                                <span>Sacrificar carta selecionada</span>
+                                <small>gera mana extra</small>
+                            </button>
+                            <button id="sacrificar-campo" class="btn ${modoSacrificioCampo ? "btn-warning" : "btn-secondary"}" ${!controlesAtivos ? "disabled" : ""}>
+                                <span>${modoSacrificioCampo ? "Escolha uma criatura" : "Sacrificar do campo"}</span>
+                                <small>${modoSacrificioCampo ? "clique no campo" : "+1 mana"}</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             ${ajudaAberta ? htmlAjuda() : ""}
@@ -558,6 +584,20 @@ function renderizarJogo(): void {
     `;
 
     conectarEventosDoJogo(controlesAtivos);
+    observarAlturaMao();
+
+    const campoAtual = document.querySelector<HTMLElement>("#game-stage");
+    if (campoAtual) campoAtual.scrollTop = scrollCampo;
+    const maoAtual = document.querySelector<HTMLElement>("#mao-jogador");
+    if (maoAtual) maoAtual.scrollLeft = scrollMao;
+
+    if (ajudaAberta && !ajudaEstavaAberta) {
+        document.querySelector<HTMLButtonElement>("#fechar-ajuda")?.focus({ preventScroll: true });
+    } else if (!ajudaAberta && ajudaEstavaAberta) {
+        document.querySelector<HTMLButtonElement>("#ajuda-jogo")?.focus({ preventScroll: true });
+    } else {
+        restaurarFocoVisual(focoAnterior);
+    }
 
     const log = document.querySelector<HTMLDivElement>("#event-log");
     if (log !== null) {
@@ -597,7 +637,7 @@ function htmlCabecalhoJogador(jogador: Jogador, ehHumano: boolean): string {
 function htmlTabuleiro(jogador: Jogador, ehHumano: boolean, interativo: boolean): string {
     if (ehHumano) {
         return `
-            <div class="board-zone board-human">
+            <div class="board-zone board-human ${indiceCartaSelecionada !== null ? "is-placing-card" : ""}">
                 ${htmlLinhaTabuleiro(jogador, "frente", interativo)}
                 ${htmlLinhaTabuleiro(jogador, "fundo", interativo)}
             </div>
@@ -873,6 +913,15 @@ function htmlLegendaTipo(tipo: TipoAtaqueVisual, compacto = false): string {
 }
 
 function conectarEventosDoJogo(controlesAtivos: boolean): void {
+    obterElemento<HTMLButtonElement>("alternar-mao").addEventListener("click", () => {
+        maoRecolhida = !maoRecolhida;
+        renderizar();
+    });
+
+    document.querySelector<HTMLDetailsElement>(".log-panel")?.addEventListener("toggle", evento => {
+        historicoAberto = (evento.currentTarget as HTMLDetailsElement).open;
+    });
+
     document.querySelectorAll<HTMLButtonElement>("[data-indice-carta]").forEach(botaoCarta => {
         botaoCarta.addEventListener("click", () => {
             if (!controlesAtivos) return;
@@ -916,7 +965,7 @@ function conectarEventosDoJogo(controlesAtivos: boolean): void {
         void passarTurnoHumano();
     });
 
-    obterElemento<HTMLButtonElement>("nova-partida-topo").addEventListener("click", voltarAoSetup);
+    obterElemento<HTMLButtonElement>("nova-partida-topo").addEventListener("click", confirmarNovaPartida);
     obterElemento<HTMLButtonElement>("ajuda-jogo").addEventListener("click", () => {
         ajudaAberta = true;
         renderizar();
@@ -1009,6 +1058,9 @@ function sacrificarDoCampo(posicao: Posicao): void {
 }
 
 async function passarTurnoHumano(): Promise<void> {
+    // Durante o combate, recolhe a mão para dar mais espaço ao campo.
+    maoRecolhidaAntesDoCombate = maoRecolhida;
+    maoRecolhida = true;
     processando = true;
     indiceCartaSelecionada = null;
     modoSacrificioCampo = false;
@@ -1017,6 +1069,8 @@ async function passarTurnoHumano(): Promise<void> {
     // Renderizamos antes de resolver o combate. O DOM permanece mostrando
     // o estado pré-combate enquanto a Partida produz todos os eventos.
     renderizar();
+    document.querySelector<HTMLElement>("#game-stage")?.scrollTo({ top: 0, behavior: "auto" });
+    await esperar(ajustarDuracao(120));
 
     const turnoDoCombate = partida!.turnoAtual;
     registrarSeparadorCombate(turnoDoCombate, "Você");
@@ -1453,7 +1507,81 @@ function mensagemResultadoSacrificio(resultado: ReturnType<Partida["tentarSacrif
     }
 }
 
+/**
+ * Mede a altura real do dock (incluindo safe area). O campo usa a altura
+ * restante da viewport sem ficar encoberto pela mão fixa.
+ */
+function observarAlturaMao(): void {
+    observadorAlturaMao?.disconnect();
+    const dock = document.querySelector<HTMLElement>("#hand-dock");
+    const gameShell = document.querySelector<HTMLElement>(".game-shell");
+    if (!dock || !gameShell) return;
+
+    const atualizar = (): void => {
+        gameShell.style.setProperty("--hand-dock-height", `${Math.ceil(dock.getBoundingClientRect().height)}px`);
+    };
+    atualizar();
+    if (typeof ResizeObserver !== "undefined") {
+        observadorAlturaMao = new ResizeObserver(atualizar);
+        observadorAlturaMao.observe(dock);
+    }
+}
+
+function identificarFocoVisual(elemento: Element | null): string | null {
+    if (!(elemento instanceof HTMLElement) || !app.contains(elemento)) return null;
+    if (elemento.id) return `#${elemento.id}`;
+    if (elemento.dataset.indiceCarta !== undefined) {
+        return `[data-indice-carta="${elemento.dataset.indiceCarta}"]`;
+    }
+    if (elemento.matches(".board-slot")) {
+        const linha = elemento.dataset.linha;
+        const coluna = elemento.dataset.coluna;
+        return `.board-human .board-slot[data-linha="${linha}"][data-coluna="${coluna}"]`;
+    }
+    return null;
+}
+
+function restaurarFocoVisual(seletor: string | null): void {
+    if (!seletor) return;
+    const elemento = document.querySelector<HTMLElement>(seletor);
+    if (elemento && !elemento.matches(":disabled") && elemento.getClientRects().length) {
+        elemento.focus({ preventScroll: true });
+    }
+}
+
+function tratarTecladoAjuda(evento: KeyboardEvent): void {
+    if (!ajudaAberta) return;
+    if (evento.key === "Escape") {
+        evento.preventDefault();
+        fecharAjuda();
+        return;
+    }
+    if (evento.key !== "Tab") return;
+    const modal = document.querySelector<HTMLElement>(".help-modal");
+    if (!modal) return;
+    const elementos = Array.from(modal.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])"))
+        .filter(elemento => elemento.getClientRects().length > 0);
+    const primeiro = elementos[0];
+    const ultimo = elementos[elementos.length - 1];
+    if (!primeiro || !ultimo) return;
+    if (evento.shiftKey && document.activeElement === primeiro) {
+        evento.preventDefault();
+        ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primeiro.focus();
+    }
+}
+
+function confirmarNovaPartida(): void {
+    if (partida?.estado === "Encerrada" || window.confirm("Abandonar esta partida e iniciar outra?")) {
+        voltarAoSetup();
+    }
+}
+
 function voltarAoSetup(): void {
+    observadorAlturaMao?.disconnect();
+    observadorAlturaMao = null;
     faseInterface = "setup";
     partida = null;
     humano = null;
@@ -1465,6 +1593,8 @@ function voltarAoSetup(): void {
     ajudaAberta = false;
     mensagemInterface = "";
     historico = [];
+    maoRecolhida = window.matchMedia("(max-height: 520px) and (orientation: landscape)").matches;
+    maoRecolhidaAntesDoCombate = null;
     renderizar();
 }
 

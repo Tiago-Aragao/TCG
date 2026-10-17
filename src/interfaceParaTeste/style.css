@@ -3945,3 +3945,404 @@ select:hover {
         min-height: 73px;
     }
 }
+
+/* ============================================================
+   UX v0.6 — Campo navegável + mão fixa/recolhível
+   Esta camada altera apenas a organização; NÃO redefine dimensões de
+   .game-card, .card-art, .board-slot ou imagens SVG aprovadas.
+   ============================================================ */
+
+.game-shell {
+    width: min(1540px, 100%);
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 8px 12px calc(var(--hand-dock-height, 76px) + 8px);
+}
+
+/* Cabeçalho acompanha o campo, mas não consome área de scroll. */
+.game-shell > .topbar {
+    position: relative;
+    top: auto;
+    flex: 0 0 auto;
+    min-width: 0;
+    margin-bottom: 8px;
+}
+
+/* Apenas a área do jogo rola: a mão não desaparece no scroll. */
+.game-stage {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 275px);
+    align-content: start;
+    align-items: start;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    padding: 1px 2px 10px;
+}
+
+.game-stage .battlefield,
+.game-stage .side-column {
+    min-width: 0;
+}
+
+/* Dock sempre ligado à viewport e dimensionado pelo ResizeObserver. */
+.hand-dock {
+    position: fixed;
+    z-index: 100;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: min(1540px, 100%);
+    max-height: min(72dvh, 450px);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 9px 14px max(9px, env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    border-bottom: 0;
+    border-top-color: rgba(217, 181, 109, .48);
+    background: rgba(12, 23, 20, .98);
+    box-shadow: 0 -12px 42px rgba(0,0,0,.48);
+    backdrop-filter: blur(18px);
+}
+
+.hand-dock-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    gap: 12px;
+}
+
+.hand-dock-toggle {
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    padding: 5px 10px;
+    border: 1px solid rgba(217,181,109,.19);
+    border-radius: 10px;
+    background: rgba(217,181,109,.055);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.hand-dock-toggle:hover {
+    background: rgba(217,181,109,.11);
+    border-color: rgba(217,181,109,.4);
+}
+
+.hand-dock-toggle:focus-visible,
+.hand-dock .btn:focus-visible {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: 2px;
+}
+
+.hand-dock-chevron {
+    flex: 0 0 22px;
+    display: grid;
+    place-items: center;
+    color: var(--gold-bright);
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.hand-dock-title {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.hand-dock-title strong {
+    color: var(--text);
+    font-size: .91rem;
+    white-space: nowrap;
+}
+
+.hand-count {
+    color: var(--gold-bright);
+}
+
+.hand-dock-title small {
+    color: var(--muted);
+    font-size: .68rem;
+    line-height: 1.2;
+}
+
+.hand-dock-controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hand-dock .mana-display {
+    min-width: 89px;
+    min-height: 44px;
+    padding: 5px 9px;
+    gap: 7px;
+}
+
+.hand-dock .mana-copy strong {
+    font-size: 1.25rem;
+}
+
+.hand-dock .hand-end-turn {
+    min-width: 128px;
+    min-height: 44px;
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: .78rem;
+}
+
+/* Conteúdo pode rolar verticalmente apenas em displays muito baixos.
+   A lista de cartas conserva o seu tamanho original e rola na horizontal. */
+.hand-dock-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    margin-top: 8px;
+}
+
+.hand-dock-content[hidden] {
+    display: none !important;
+}
+
+.hand-dock .hand {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+    padding-bottom: 14px;
+}
+
+.hand-dock .action-bar {
+    flex: 0 0 auto;
+    gap: 10px;
+    margin-top: 0;
+    padding-top: 9px;
+    align-items: center;
+}
+
+.hand-dock .action-status {
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 auto;
+}
+
+.hand-dock .action-status p {
+    font-size: .77rem;
+    line-height: 1.35;
+}
+
+.hand-dock .action-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    width: auto;
+    gap: 7px;
+}
+
+.hand-dock .action-buttons .btn {
+    min-height: 44px;
+    max-width: 220px;
+    padding: 7px 12px;
+    font-size: .75rem;
+    line-height: 1.2;
+    text-align: left;
+}
+
+/* Indica onde clicar após selecionar uma carta, sem prometer que a
+   posição é válida para todas as regras de domínio. */
+.board-human.is-placing-card .board-slot.empty.slot-interactive:not(:disabled) {
+    border-color: rgba(217,181,109,.55);
+    background: rgba(217,181,109,.055);
+}
+
+.board-human .board-slot:focus-visible {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: -3px;
+}
+
+@media (max-width: 1080px) {
+    .game-stage {
+        grid-template-columns: minmax(0, 1fr) minmax(205px, 250px);
+    }
+    .hand-dock .action-bar {
+        flex-direction: row;
+    }
+    .hand-dock .action-buttons {
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 900px) {
+    .game-shell {
+        padding: 6px 7px calc(var(--hand-dock-height, 76px) + 6px);
+    }
+    .game-stage {
+        display: block;
+        padding: 1px 1px 8px;
+        scrollbar-gutter: auto;
+    }
+    .game-stage .side-column {
+        margin-top: 8px;
+    }
+    .game-shell > .topbar {
+        margin-bottom: 6px;
+    }
+    .hand-dock {
+        padding-inline: 10px;
+        max-height: min(72dvh, 410px);
+    }
+}
+
+@media (max-width: 680px) {
+    .game-shell {
+        padding: 4px 4px calc(var(--hand-dock-height, 82px) + 4px);
+    }
+    .game-stage {
+        scrollbar-width: thin;
+    }
+    .hand-dock {
+        width: 100%;
+        max-height: min(70dvh, 370px);
+        padding: 7px 8px max(7px, env(safe-area-inset-bottom));
+        border-radius: 12px 12px 0 0;
+    }
+    .hand-dock-toolbar {
+        gap: 6px;
+    }
+    .hand-dock-toggle {
+        gap: 5px;
+        padding: 5px;
+    }
+    .hand-dock-chevron {
+        flex-basis: 15px;
+        font-size: 1.15rem;
+    }
+    .hand-dock-title strong {
+        font-size: .76rem;
+    }
+    .hand-dock-title small {
+        font-size: .58rem;
+    }
+    .hand-dock-controls {
+        gap: 5px;
+    }
+    .hand-dock .mana-display {
+        min-width: 65px;
+        gap: 3px;
+        padding: 4px 5px;
+    }
+    .hand-dock .mana-symbol {
+        font-size: .83rem;
+    }
+    .hand-dock .mana-copy strong {
+        font-size: 1.1rem;
+    }
+    .hand-dock .hand-end-turn {
+        min-width: 105px;
+        padding-inline: 7px;
+        font-size: .7rem;
+    }
+    .hand-dock-content {
+        margin-top: 5px;
+    }
+    .hand-dock .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding-top: 5px;
+    }
+    .hand-dock .action-status-label {
+        font-size: .56rem;
+    }
+    .hand-dock .action-status p {
+        margin-top: 2px;
+        font-size: .72rem;
+    }
+    .hand-dock .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+    .hand-dock .action-buttons .btn {
+        width: 100%;
+        max-width: none;
+        min-height: 48px;
+        padding: 7px;
+        align-items: center;
+        text-align: center;
+        font-size: .71rem;
+    }
+    .hand-dock .action-buttons .btn small {
+        font-size: .6rem;
+    }
+    .topbar-actions .btn {
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 430px) {
+    /* Mantém a opção de reiniciar acessível, em vez de ocultá-la. */
+    #nova-partida-topo {
+        display: inline-flex;
+    }
+    .topbar-actions {
+        gap: 3px;
+    }
+    .topbar-actions .btn {
+        padding-inline: 5px;
+        font-size: .62rem;
+    }
+    .hand-dock-title small {
+        display: none;
+    }
+    .hand-dock .mana-copy small {
+        font-size: .48rem;
+    }
+}
+
+@media (max-height: 550px) {
+    .hand-dock {
+        max-height: 65dvh;
+    }
+    .game-shell > .topbar {
+        min-height: 42px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hand-dock-toggle,
+    .hand-dock .btn {
+        transition: none;
+    }
+}
