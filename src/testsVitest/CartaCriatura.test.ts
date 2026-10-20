@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { CartaCriatura } from "../CartaCriatura";
+import { CartaCriatura } from "../game/CartaCriatura";
 
 describe("CartaCriatura", () => {
 

@@ -1,7 +1,7 @@
 import { Posicao } from "./Tabuleiro";
 
 /**
-* Registrador de eventos para serem consumidos pela TelaConsole.
+* Registrador de eventos para serem consumidos pelo Front end.
 */
 
 export type EventoAtaqueCriatura = {

@@ -1,5 +1,5 @@
-import { CartaCriatura } from "./CartaCriatura";
-import { Deck } from "./Deck";
+import { CartaCriatura } from "../game/CartaCriatura";
+import { Deck } from "../game/Deck";
 
 /**
  * Criação de 4 decks para eu testar em partidas, talvez faça mais algum outro deck caso sinta necessidade.

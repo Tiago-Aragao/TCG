@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { Criatura } from "../Criatura";
-import { Jogador } from "../Jogador";
-import { Coluna } from "../Tabuleiro";
-import { Partida } from "../Partida";
-import { Deck } from "../Deck";
-import { CartaCriatura } from "../CartaCriatura";
+import { Criatura } from "../game/Criatura";
+import { Jogador } from "../game/Jogador";
+import { Coluna } from "../game/Tabuleiro";
+import { Partida } from "../game/Partida";
+import { Deck } from "../game/Deck";
+import { CartaCriatura } from "../game/CartaCriatura";
 
 /*
  * Cria um jogador com um deck vazio.
@@ -1352,7 +1352,9 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueCriatura",
                     nomeAtacante: "Guerreiro",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     nomeDefensor: "Alvo",
+                    posicaoDefensor: { linha: "frente", coluna: Coluna.Esquerda },
                     danoCausado: 3,
                     vidaAposDano: 7
                 }
@@ -1388,13 +1390,16 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueCriatura",
                     nomeAtacante: "Finalizador",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     nomeDefensor: "Alvo",
+                    posicaoDefensor: { linha: "frente", coluna: Coluna.Esquerda },
                     danoCausado: 10,
                     vidaAposDano: 0
                 },
                 {
                     tipo: "CriaturaDestruida",
-                    nomeCriatura: "Alvo"
+                    nomeCriatura: "Alvo",
+                    posicaoCriatura: { linha: "frente", coluna: Coluna.Esquerda }
                 }
             ]);
         });
@@ -1428,6 +1433,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueImpedido",
                     nomeCriatura: "Guerreiro",
+                    posicaoAtacante: { linha: "fundo", coluna: Coluna.Esquerda },
                     motivo: "LinhaInvalida"
                 }
             ]);
@@ -1453,6 +1459,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueImpedido",
                     nomeCriatura: "Guerreiro",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     motivo: "InvalidoTurno1"
                 }
             ]);
@@ -1483,6 +1490,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueDireto",
                     nomeAtacante: "Guerreiro",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     nomeDefensor: "Jogador 2",
                     danoCausado: 3,
                     vidaAposDano: 17
@@ -1512,6 +1520,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueDireto",
                     nomeAtacante: "Finalizador",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     nomeDefensor: "Jogador 2",
                     danoCausado: 20,
                     vidaAposDano: 0
@@ -1568,6 +1577,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueDireto",
                     nomeAtacante: "Atacante 1",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Esquerda },
                     nomeDefensor: "Jogador 2",
                     danoCausado: 50,
                     vidaAposDano: -30
@@ -1575,6 +1585,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueDireto",
                     nomeAtacante: "Atacante 2",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Meio },
                     nomeDefensor: "Jogador 2",
                     danoCausado: 50,
                     vidaAposDano: -80
@@ -1582,6 +1593,7 @@ describe("Partida", () => {
                 {
                     tipo: "AtaqueDireto",
                     nomeAtacante: "Atacante 3",
+                    posicaoAtacante: { linha: "frente", coluna: Coluna.Direita },
                     nomeDefensor: "Jogador 2",
                     danoCausado: 48,
                     vidaAposDano: -128

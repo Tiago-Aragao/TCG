@@ -1824,4 +1824,4 @@
   else Object.assign(raiz, api);
 })
   export { gerarCriatura, gerarSVG, TIPOS, SUBTIPOS, NOMES_SUBTIPOS };
-  (typeof globalThis !== 'undefined' ? globalThis : this); // Remova ou deixe apenas se necessário, mas prefira os exports nativos abaixo:
+  (typeof globalThis !== 'undefined' ? globalThis : this);

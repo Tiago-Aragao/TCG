@@ -1,12 +1,12 @@
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { Partida } from "./Partida";
-import { Jogador } from "./Jogador";
-import { Carta } from "./Carta";
-import { CartaCriatura } from "./CartaCriatura";
-import { Coluna, Linha, Posicao } from "./Tabuleiro";
-import { TiposEventos } from "./tiposEventos";
-import { ResultadoTentarJogarCarta, ResultadoTentarSacrificio } from "./tiposResultados";
+import { Partida } from "../../game/Partida";
+import { Jogador } from "../../game/Jogador";
+import { Carta } from "../../game/Carta";
+import { CartaCriatura } from "../../game/CartaCriatura";
+import { Coluna, Linha, Posicao } from "../../game/Tabuleiro";
+import { TiposEventos } from "../../game/tiposEventos";
+import { ResultadoTentarJogarCarta, ResultadoTentarSacrificio } from "../../game/tiposResultados";
 
 /**
  * Porta mínima de entrada e saída usada pela TelaConsole.

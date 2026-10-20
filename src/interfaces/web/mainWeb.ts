@@ -1,13 +1,13 @@
 /// <reference types="vite/client" />
-import { Carta } from "../Carta";
-import { CartaCriatura } from "../CartaCriatura";
-import { Deck } from "../Deck";
-import { Jogador } from "../Jogador";
-import { Partida } from "../Partida";
-import { Coluna, Linha, Posicao } from "../Tabuleiro";
-import { TiposEventos } from "../tiposEventos";
-import { decksParaTeste } from "../montagemCriaturasDecks";
-import { BotSimples } from "./BotSimples";
+import { Carta } from "../../game/Carta";
+import { CartaCriatura } from "../../game/CartaCriatura";
+import { Deck } from "../../game/Deck";
+import { Jogador } from "../../game/Jogador";
+import { Partida } from "../../game/Partida";
+import { Coluna, Linha, Posicao } from "../../game/Tabuleiro";
+import { TiposEventos } from "../../game/tiposEventos";
+import { decksParaTeste } from "../../content/montagemCriaturasDecks";
+import { BotSimples } from "../../botsIA/BotSimples";
 
 // O gerador é um script legado (IIFE); ?url o inclui no build sem transformá-lo em módulo.
 // O Vite resolve a URL com o base correto (/TCG/) no GitHub Pages.

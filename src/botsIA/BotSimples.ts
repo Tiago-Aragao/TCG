@@ -1,10 +1,9 @@
-import { Carta } from "../Carta";
-import { CartaCriatura } from "../CartaCriatura";
-import { Jogador } from "../Jogador";
-import { Partida } from "../Partida";
-import { Coluna, Posicao } from "../Tabuleiro";
-import { TiposEventos } from "../tiposEventos";
-
+import { Carta } from "../game/Carta";
+import { CartaCriatura } from "../game/CartaCriatura";
+import { Jogador } from "../game/Jogador";
+import { Partida } from "../game/Partida";
+import { Coluna, Posicao } from "../game/Tabuleiro";
+import { TiposEventos } from "../game/tiposEventos";
 /**
  * Bot propositalmente simples para playtests iniciais.
  *

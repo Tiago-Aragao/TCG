@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Criatura } from "../Criatura";
+import { Criatura } from "../game/Criatura";
 
 describe("Criatura", () => {
 

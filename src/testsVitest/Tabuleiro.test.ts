@@ -1,9 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Criatura } from "../Criatura";
-import {
-    Coluna,
-    Tabuleiro
-} from "../Tabuleiro";
+import { Criatura } from "../game/Criatura";
+import { Coluna, Tabuleiro } from "../game/Tabuleiro";
 
 describe("Tabuleiro", () => {
 

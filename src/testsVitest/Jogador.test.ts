@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { CartaCriatura } from "../CartaCriatura";
-import { Deck } from "../Deck";
-import { Jogador } from "../Jogador";
-import { Coluna } from "../Tabuleiro";
+import { CartaCriatura } from "../game/CartaCriatura";
+import { Deck } from "../game/Deck";
+import { Jogador } from "../game/Jogador";
+import { Coluna } from "../game/Tabuleiro";
 
 function criarCarta(id: number): CartaCriatura {
     return new CartaCriatura(
