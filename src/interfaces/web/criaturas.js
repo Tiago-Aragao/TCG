@@ -1822,4 +1822,6 @@
   const api = { gerarCriatura, gerarSVG, TIPOS, SUBTIPOS, NOMES_SUBTIPOS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else Object.assign(raiz, api);
-})(typeof globalThis !== 'undefined' ? globalThis : this);
+})
+  export { gerarCriatura, gerarSVG, TIPOS, SUBTIPOS, NOMES_SUBTIPOS };
+  (typeof globalThis !== 'undefined' ? globalThis : this); // Remova ou deixe apenas se necessário, mas prefira os exports nativos abaixo:
