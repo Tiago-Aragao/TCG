@@ -9,9 +9,8 @@ import { TiposEventos } from "../../game/tiposEventos";
 import { decksParaTeste } from "../../content/montagemCriaturasDecks";
 import { BotSimples } from "../../botsIA/BotSimples";
 
-// O gerador é um script legado (IIFE); ?url o inclui no build sem transformá-lo em módulo.
-// O Vite resolve a URL com o base correto (/TCG/) no GitHub Pages.
-import urlGeradorCriaturas from "./criaturas.js?url";
+// Importacao ES nativa. O Vite integra o gerador ao bundle no dev e na producao.
+import { gerarSVG as gerarSVGProcedural } from "./geradorArteSVG.js";
 
 type ChaveDeck = keyof typeof decksParaTeste;
 type Iniciativa = "aleatoria" | "humano" | "bot";
@@ -21,15 +20,6 @@ type TipoAtaqueVisual = CartaCriatura["tipoAtaque"];
 type TipoFeedback = "neutro" | "ataque" | "ataque-direto" | "destruicao" | "impedido" | "fim";
 
 
-type OpcoesGeradorSVG = {
-    seed?: string;
-    fundo?: boolean;
-    subtipo?: string;
-    genero?: "M" | "F";
-};
-
-type GeradorSVG = (tipo: string, opcoes?: OpcoesGeradorSVG) => string;
-
 type ConfiguracaoArteCriatura = {
     tipo: "Humanos" | "Monstros" | "Alien" | "Mortos-Vivos" | "Animais";
     subtipo: string;
@@ -37,9 +27,11 @@ type ConfiguracaoArteCriatura = {
     genero?: "M" | "F";
 };
 
-type GlobalComGerador = typeof globalThis & {
-    gerarSVG?: GeradorSVG;
-};
+
+/**
+ * Adicionando uma nova seed por sessão para observar a variação das artes:
+ */
+const SeedSessao = crypto.randomUUID();
 
 /**
  * A arte é uma preocupação exclusiva da interface de playtest.
@@ -98,7 +90,6 @@ const CONFIGURACOES_ARTE: Record<string, ConfiguracaoArteCriatura> = {
     "montanha viva":         { tipo: "Monstros",     subtipo: "golem",           seed: "tcg-card-040" }
 };
 
-let gerarSVGProcedural: GeradorSVG | null = null;
 const cacheUrlArte = new Map<string, string>();
 const avisosArteDesconhecida = new Set<string>();
 
@@ -135,47 +126,11 @@ let maoRecolhidaAntesDoCombate: boolean | null = null;
 let historicoAberto = window.matchMedia("(min-width: 681px)").matches;
 let observadorAlturaMao: ResizeObserver | null = null;
 
-void inicializarInterface();
+inicializarInterface();
 
-async function inicializarInterface(): Promise<void> {
+function inicializarInterface(): void {
     document.addEventListener("keydown", tratarTecladoAjuda);
-    await carregarGeradorSVG();
     renderizar();
-}
-
-async function carregarGeradorSVG(): Promise<void> {
-    try {
-        // Executa criaturas.js como script clássico, sem envoltório CommonJS/ESM.
-        // Isso preserva sua API existente (globalThis.gerarSVG) no dev e no build.
-        // A URL importada com ?url funciona também no caminho /TCG/ do GitHub Pages.
-        await new Promise<void>((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = urlGeradorCriaturas;
-            script.async = true;
-
-            script.addEventListener("load", () => {
-                script.remove();
-                resolve();
-            }, { once: true });
-
-            script.addEventListener("error", () => {
-                script.remove();
-                reject(new Error(`Não foi possível carregar criaturas.js em ${urlGeradorCriaturas}`));
-            }, { once: true });
-
-            document.head.appendChild(script);
-        });
-
-        const api = (globalThis as GlobalComGerador).gerarSVG;
-        if (typeof api !== "function") {
-            throw new Error("criaturas.js carregou, mas globalThis.gerarSVG não foi definido.");
-        }
-
-        gerarSVGProcedural = api;
-        console.info("[TCG] Gerador de SVG pronto.");
-    } catch (erro) {
-        console.error("[TCG] Falha ao iniciar as artes SVG. Usando placeholders.", erro);
-    }
 }
 
 function renderizar(): void {
@@ -772,10 +727,6 @@ function htmlArteCriatura(nome: string, tipoAtaque: TipoAtaqueVisual, classeImag
 }
 
 function obterUrlArteCriatura(nome: string): string | null {
-    if (gerarSVGProcedural === null) {
-        return null;
-    }
-
     const chave = normalizarChaveArte(nome);
     const configuracao = CONFIGURACOES_ARTE[chave] ?? criarConfiguracaoFallback(nome);
     const cacheKey = `${configuracao.tipo}|${configuracao.subtipo}|${configuracao.seed}|${configuracao.genero ?? ""}`;
@@ -790,7 +741,7 @@ function obterUrlArteCriatura(nome: string): string | null {
         // O SVG vira Blob URL para isolar ids de gradients/filters entre cópias repetidas
         // da mesma carta e para não inflar o innerHTML a cada renderização.
         const svg = gerarSVGProcedural(configuracao.tipo, {
-            seed: configuracao.seed,
+            seed: `${SeedSessao}-${configuracao.seed}`,
             subtipo: configuracao.subtipo,
             genero: configuracao.genero,
             fundo: false
