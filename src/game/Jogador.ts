@@ -29,11 +29,17 @@ export class Jogador {
         this.tabuleiro = new Tabuleiro();
     }
 
-    // Mana e suas regras:
+    
+    // Getters do Jogador:
     public get mostrarMana(): number {
         return this.mana;
     }
 
+    public get mostrarQuantidadeCartasMao(): number {
+        return this.mao.length;
+    }
+
+    // Mana e suas regras:
     public gerarManaTurno(turnoAtual: number): void {
         this.mana = Math.min(6, Math.ceil(turnoAtual/2));
     }

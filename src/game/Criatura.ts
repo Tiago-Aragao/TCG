@@ -10,7 +10,12 @@ export class Criatura {
     constructor(nome: string, ataque: number, vida: number, tipoAtaque: TipoAtaque = "corpo-a-corpo") {
         this.nome = nome;
         this.ataque = ataque;
+        // Será refatorado e separado em vidaMaxima e vidaAtual para futuramente ter cura etc.
         this.vida = vida;
+        /**
+         * Quero modificar e criar uma classe inteiramente nova TipoAtaque onde uma criatura podera 
+         * ter mais de um tipo, também facilitando a implementação de novos tipos de dano etc.
+         * */
         this.tipoAtaque = tipoAtaque;
     }
 

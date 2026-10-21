@@ -56,6 +56,13 @@ export class Partida {
         return (this.__turnoAtual % 2 !== 0) ? this.jogador2 : this.jogador1;
     }
 
+    public podeSacrificarNesteTurno(): boolean {
+        /**
+         * "Getter" que retorna se o sacrificio está disponivel esse turno.
+        */
+        return this.estadoPartida === "FasePrincipal" && !this.jaSacrificouEsteTurno;
+    }
+
     // Metodos publicos que serão chamados pela API:
     public iniciarPartida(): void {
         // Travo varias chamadas:
